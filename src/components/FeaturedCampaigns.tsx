@@ -85,7 +85,7 @@ const FeaturedCampaigns = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="outline" size="lg">View All Campaigns</Button>
+          <Button variant="outline" size="lg" asChild><Link to="/campaigns">View All Campaigns</Link></Button>
         </div>
       </div>
     </section>
