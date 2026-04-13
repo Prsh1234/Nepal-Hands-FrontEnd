@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/nepal-hands-logo.png";
@@ -40,7 +41,7 @@ const Navbar = () => {
           <Button variant="ghost" size="sm">
             Sign In
           </Button>
-          <Button size="sm">Get Started</Button>
+          <Button size="sm" asChild><Link to="/create">Start Campaign</Link></Button>
         </div>
 
         {/* Mobile toggle */}
@@ -69,8 +70,8 @@ const Navbar = () => {
             <Button variant="ghost" size="sm" className="flex-1">
               Sign In
             </Button>
-            <Button size="sm" className="flex-1">
-              Get Started
+            <Button size="sm" className="flex-1" asChild>
+              <Link to="/create">Start Campaign</Link>
             </Button>
           </div>
         </div>
