@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
+import Campaigns from "./pages/Campaigns.tsx";
 import CampaignDetails from "./pages/CampaignDetails.tsx";
 import CreateCampaign from "./pages/CreateCampaign.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/campaign/:id" element={<CampaignDetails />} />
           <Route path="/create" element={<CreateCampaign />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
