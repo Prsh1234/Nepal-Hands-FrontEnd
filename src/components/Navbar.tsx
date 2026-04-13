@@ -66,16 +66,27 @@ const Navbar = () => {
       {/* Mobile menu */}
       {isOpen && (
         <div className="md:hidden bg-background border-b border-border px-4 pb-4">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
-              onClick={() => setIsOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </a>
+            )
+          )}
           <div className="flex gap-2 mt-3">
             <Button variant="ghost" size="sm" className="flex-1">
               Sign In
