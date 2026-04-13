@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Tag, ArrowRight } from "lucide-react";
+import { MapPin, Calendar, Tag, ArrowRight, Plus } from "lucide-react";
 
 const opportunities = [
   {
