@@ -48,9 +48,16 @@ const VolunteerSection = () => {
               opportunities that align with your skills, interests, and
               availability. Every opportunity is posted by verified organizations.
             </p>
-            <Button size="lg" className="gap-2">
-              Browse All Opportunities <ArrowRight size={18} />
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button size="lg" className="gap-2">
+                Browse All Opportunities <ArrowRight size={18} />
+              </Button>
+              <Button size="lg" variant="outline" className="gap-2" asChild>
+                <Link to="/volunteer/create">
+                  <Plus size={18} /> Post Opportunity
+                </Link>
+              </Button>
+            </div>
           </motion.div>
 
           <div className="space-y-4">
