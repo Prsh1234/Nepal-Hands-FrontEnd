@@ -8,7 +8,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { label: "Campaigns", href: "#campaigns" },
+    { label: "Campaigns", href: "/campaigns" },
     { label: "Volunteer", href: "#volunteer" },
     { label: "How It Works", href: "#how-it-works" },
     { label: "About", href: "#about" },
@@ -26,15 +26,25 @@ const Navbar = () => {
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                {link.label}
+              </a>
+            )
+          )}
         </div>
 
         <div className="hidden md:flex items-center gap-3">
@@ -56,16 +66,27 @@ const Navbar = () => {
       {/* Mobile menu */}
       {isOpen && (
         <div className="md:hidden bg-background border-b border-border px-4 pb-4">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
-              onClick={() => setIsOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </a>
+            )
+          )}
           <div className="flex gap-2 mt-3">
             <Button variant="ghost" size="sm" className="flex-1">
               Sign In
