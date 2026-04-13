@@ -1,42 +1,10 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, Clock, Users, CheckCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { campaigns } from "@/data/campaigns";
 
-const campaigns = [
-  {
-    title: "Clean Water for Dolakha",
-    org: "Nepal Water Foundation",
-    raised: "NPR 4,50,000",
-    goal: "NPR 6,00,000",
-    progress: 75,
-    daysLeft: 12,
-    donors: 234,
-    verified: true,
-    category: "Water & Sanitation",
-  },
-  {
-    title: "School Rebuilding in Sindhupalchok",
-    org: "Education First Nepal",
-    raised: "NPR 8,20,000",
-    goal: "NPR 10,00,000",
-    progress: 82,
-    daysLeft: 8,
-    donors: 412,
-    verified: true,
-    category: "Education",
-  },
-  {
-    title: "Women's Skill Training Center",
-    org: "Shakti Samuha",
-    raised: "NPR 2,10,000",
-    goal: "NPR 5,00,000",
-    progress: 42,
-    daysLeft: 25,
-    donors: 98,
-    verified: true,
-    category: "Empowerment",
-  },
-];
+const formatNPR = (n: number) => "NPR " + n.toLocaleString("en-IN");
 
 const FeaturedCampaigns = () => {
   return (
@@ -62,16 +30,14 @@ const FeaturedCampaigns = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {campaigns.map((campaign, i) => (
             <motion.div
-              key={campaign.title}
+              key={campaign.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
               className="bg-card rounded-xl overflow-hidden shadow-card hover:shadow-elevated transition-shadow duration-300 group"
             >
-              {/* Colored header bar */}
               <div className="h-2 bg-gradient-hero" />
-
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-semibold text-primary bg-accent px-3 py-1 rounded-full">
@@ -84,14 +50,13 @@ const FeaturedCampaigns = () => {
                   )}
                 </div>
 
-                <h3 className="font-display text-lg font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors">
-                  {campaign.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  by {campaign.org}
-                </p>
+                <Link to={`/campaign/${campaign.id}`}>
+                  <h3 className="font-display text-lg font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors cursor-pointer">
+                    {campaign.title}
+                  </h3>
+                </Link>
+                <p className="text-sm text-muted-foreground mb-4">by {campaign.org}</p>
 
-                {/* Progress bar */}
                 <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
                   <div
                     className="h-full bg-gradient-hero rounded-full transition-all duration-700"
@@ -100,35 +65,27 @@ const FeaturedCampaigns = () => {
                 </div>
 
                 <div className="flex items-center justify-between text-sm mb-4">
-                  <span className="font-semibold text-foreground">
-                    {campaign.raised}
-                  </span>
-                  <span className="text-muted-foreground">
-                    of {campaign.goal}
-                  </span>
+                  <span className="font-semibold text-foreground">{formatNPR(campaign.raised)}</span>
+                  <span className="text-muted-foreground">of {formatNPR(campaign.goal)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-4">
-                  <span className="flex items-center gap-1">
-                    <Clock size={14} /> {campaign.daysLeft} days left
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users size={14} /> {campaign.donors} donors
-                  </span>
+                  <span className="flex items-center gap-1"><Clock size={14} /> {campaign.daysLeft} days left</span>
+                  <span className="flex items-center gap-1"><Users size={14} /> {campaign.donors} donors</span>
                 </div>
 
-                <Button className="w-full mt-4 gap-2" size="sm">
-                  <Heart size={16} /> Donate Now
-                </Button>
+                <Link to={`/campaign/${campaign.id}`}>
+                  <Button className="w-full mt-4 gap-2" size="sm">
+                    <Heart size={16} /> Donate Now
+                  </Button>
+                </Link>
               </div>
             </motion.div>
           ))}
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="outline" size="lg">
-            View All Campaigns
-          </Button>
+          <Button variant="outline" size="lg">View All Campaigns</Button>
         </div>
       </div>
     </section>
