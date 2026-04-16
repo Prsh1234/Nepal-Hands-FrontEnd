@@ -12,6 +12,7 @@ import VolunteerDetails from "./pages/VolunteerDetails.tsx";
 import Volunteers from "./pages/Volunteers.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import CreatorDashboard from "./pages/CreatorDashboard.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
