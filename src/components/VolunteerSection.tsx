@@ -49,8 +49,10 @@ const VolunteerSection = () => {
               availability. Every opportunity is posted by verified organizations.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" className="gap-2">
-                Browse All Opportunities <ArrowRight size={18} />
+              <Button size="lg" className="gap-2" asChild>
+                <Link to="/volunteers">
+                  Browse All Opportunities <ArrowRight size={18} />
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="gap-2" asChild>
                 <Link to="/volunteer/create">
