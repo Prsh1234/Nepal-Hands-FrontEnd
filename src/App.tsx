@@ -10,6 +10,7 @@ import CreateCampaign from "./pages/CreateCampaign.tsx";
 import CreateVolunteer from "./pages/CreateVolunteer.tsx";
 import VolunteerDetails from "./pages/VolunteerDetails.tsx";
 import Volunteers from "./pages/Volunteers.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
