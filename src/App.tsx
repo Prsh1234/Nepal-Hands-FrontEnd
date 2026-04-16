@@ -10,6 +10,7 @@ import CreateCampaign from "./pages/CreateCampaign.tsx";
 import CreateVolunteer from "./pages/CreateVolunteer.tsx";
 import VolunteerDetails from "./pages/VolunteerDetails.tsx";
 import Volunteers from "./pages/Volunteers.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/volunteers" element={<Volunteers />} />
           <Route path="/volunteer/create" element={<CreateVolunteer />} />
           <Route path="/volunteer/:id" element={<VolunteerDetails />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
