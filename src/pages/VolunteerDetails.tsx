@@ -123,6 +123,13 @@ const VolunteerDetails = () => {
                   <Share2 size={14} /> Share
                 </button>
               </div>
+              <Link
+                to={`/volunteer/${opportunity.id}/chat`}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-2 text-sm font-semibold text-primary"
+              >
+                <Users size={16} /> Open Group Chat
+                <ChevronRight size={14} />
+              </Link>
             </motion.div>
 
             {/* Linked Campaign */}
