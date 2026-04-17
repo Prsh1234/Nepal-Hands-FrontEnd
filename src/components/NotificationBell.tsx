@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Bell, CheckCircle2, Heart, Users, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -165,8 +166,8 @@ const NotificationBell = () => {
           )}
         </ScrollArea>
         <div className="px-4 py-2 border-t border-border">
-          <Button variant="ghost" size="sm" className="w-full text-xs">
-            View all notifications
+          <Button variant="ghost" size="sm" className="w-full text-xs" asChild>
+            <Link to="/notifications">View all notifications</Link>
           </Button>
         </div>
       </PopoverContent>
