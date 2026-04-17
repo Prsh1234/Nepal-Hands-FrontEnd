@@ -9,6 +9,7 @@ import CampaignDetails from "./pages/CampaignDetails.tsx";
 import CreateCampaign from "./pages/CreateCampaign.tsx";
 import CreateVolunteer from "./pages/CreateVolunteer.tsx";
 import VolunteerDetails from "./pages/VolunteerDetails.tsx";
+import VolunteerChat from "./pages/VolunteerChat.tsx";
 import Volunteers from "./pages/Volunteers.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import CreatorDashboard from "./pages/CreatorDashboard.tsx";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/volunteers" element={<Volunteers />} />
           <Route path="/volunteer/create" element={<CreateVolunteer />} />
           <Route path="/volunteer/:id" element={<VolunteerDetails />} />
+          <Route path="/volunteer/:id/chat" element={<VolunteerChat />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
