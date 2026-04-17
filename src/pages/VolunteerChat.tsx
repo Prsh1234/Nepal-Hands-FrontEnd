@@ -145,6 +145,16 @@ const VolunteerChat = () => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const grouped = useMemo(() => {
+    const out: { day: Date; items: ChatMessage[] }[] = [];
+    messages.forEach((m) => {
+      const last = out[out.length - 1];
+      if (last && isSameDay(last.day, m.date)) last.items.push(m);
+      else out.push({ day: m.date, items: [m] });
+    });
+    return out;
+  }, [messages]);
+
   if (!opportunity) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
@@ -176,16 +186,6 @@ const VolunteerChat = () => {
     ]);
     setDraft("");
   };
-
-  const grouped = useMemo(() => {
-    const out: { day: Date; items: ChatMessage[] }[] = [];
-    messages.forEach((m) => {
-      const last = out[out.length - 1];
-      if (last && isSameDay(last.day, m.date)) last.items.push(m);
-      else out.push({ day: m.date, items: [m] });
-    });
-    return out;
-  }, [messages]);
 
   const dayLabel = (d: Date) => {
     const today = new Date();
