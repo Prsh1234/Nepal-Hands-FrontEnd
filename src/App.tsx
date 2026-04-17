@@ -13,6 +13,7 @@ import Volunteers from "./pages/Volunteers.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import CreatorDashboard from "./pages/CreatorDashboard.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import Notifications from "./pages/Notifications.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
