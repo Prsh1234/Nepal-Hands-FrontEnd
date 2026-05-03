@@ -17,6 +17,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import Notifications from "./pages/Notifications.tsx";
 import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import OAuthRedirect from "./pages/OAuthRedirect.tsx";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/oauth2/redirect" element={<OAuthRedirect />} />
           <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

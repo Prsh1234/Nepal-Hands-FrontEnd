@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +19,8 @@ const signInSchema = z.object({
 });
 
 const signUpSchema = signInSchema.extend({
-  displayName: z.string().trim().min(2, { message: "Name must be at least 2 characters" }).max(80),
+  firstName: z.string().trim().min(2, { message: "First name must be at least 2 characters" }).max(80),
+  lastName: z.string().trim().min(2, { message: "Last name must be at least 2 characters" }).max(80),
 });
 
 const GoogleIcon = () => (
@@ -33,18 +33,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ displayName: "", email: "", password: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) navigate("/dashboard", { replace: true });
-    });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/dashboard", { replace: true });
-    });
-    return () => subscription.unsubscribe();
-  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,46 +50,36 @@ const Auth = () => {
     setLoading(true);
     try {
       if (tab === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data } = await api.post("/auth/login", {
           email: form.email,
           password: form.password,
         });
-        if (error) throw error;
+        localStorage.setItem("AUTH_TOKEN", data.accessToken);
+        localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
         toast.success("Welcome back!");
+        navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data } = await api.post("/auth/signup", {
           email: form.email,
           password: form.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { display_name: form.displayName },
-          },
+          firstName: form.firstName,
+          lastName: form.lastName,
         });
-        if (error) throw error;
-        toast.success("Check your email to confirm your account.");
+        localStorage.setItem("AUTH_TOKEN", data.accessToken);
+        localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
+        toast.success("Account created successfully!");
+        navigate("/dashboard");
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Something went wrong";
       toast.error(msg.includes("already registered") ? "This email is already registered. Try signing in." : msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogle = async () => {
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/dashboard`,
-      });
-      if (result.error) {
-        toast.error("Google sign-in failed. Please try again.");
-        setLoading(false);
-      }
-    } catch {
-      toast.error("Google sign-in failed.");
-      setLoading(false);
-    }
+  const handleGoogle = () => {
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
 
   return (
@@ -154,17 +134,28 @@ const Auth = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <TabsContent value="signup" className="m-0">
+                <TabsContent value="signup" className="m-0 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="displayName">Full name</Label>
+                    <Label htmlFor="firstName">First name</Label>
                     <Input
-                      id="displayName"
-                      placeholder="Aarav Sharma"
-                      value={form.displayName}
-                      onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                      id="firstName"
+                      placeholder="Aarav"
+                      value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                       maxLength={80}
                     />
-                    {errors.displayName && <p className="text-xs text-destructive">{errors.displayName}</p>}
+                    {errors.firstName && <p className="text-xs text-destructive">{errors.firstName}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Sharma"
+                      value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      maxLength={80}
+                    />
+                    {errors.lastName && <p className="text-xs text-destructive">{errors.lastName}</p>}
                   </div>
                 </TabsContent>
 
