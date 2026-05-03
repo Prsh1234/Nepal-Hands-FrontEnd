@@ -50,8 +50,8 @@ const Navbar = () => {
 
         <div className="hidden md:flex items-center gap-3">
           <NotificationBell />
-          <Button variant="ghost" size="sm">
-            Sign In
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/auth">Sign In</Link>
           </Button>
           <Button size="sm" asChild><Link to="/create">Start Campaign</Link></Button>
         </div>
@@ -90,8 +90,8 @@ const Navbar = () => {
             )
           )}
           <div className="flex gap-2 mt-3">
-            <Button variant="ghost" size="sm" className="flex-1">
-              Sign In
+            <Button variant="ghost" size="sm" className="flex-1" asChild>
+              <Link to="/auth">Sign In</Link>
             </Button>
             <Button size="sm" className="flex-1" asChild>
               <Link to="/create">Start Campaign</Link>

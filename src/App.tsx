@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import CreatorDashboard from "./pages/CreatorDashboard.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import Notifications from "./pages/Notifications.tsx";
+import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
