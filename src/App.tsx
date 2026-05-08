@@ -18,6 +18,7 @@ import Notifications from "./pages/Notifications.tsx";
 import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import OAuthRedirect from "./pages/OAuthRedirect.tsx";
+import Voldel from "./pages/Voldel.tsx";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/volunteers" element={<Volunteers />} />
           <Route path="/volunteer/create" element={<CreateVolunteer />} />
           <Route path="/volunteer/:id" element={<VolunteerDetails />} />
+          <Route path="/voldel/:id" element={<Voldel />} />
           <Route path="/volunteer/:id/chat" element={<VolunteerChat />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />

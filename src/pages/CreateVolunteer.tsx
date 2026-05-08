@@ -10,10 +10,11 @@ import Footer from "@/components/Footer";
 import {
   ArrowLeft, ArrowRight, Check, Calendar, MapPin, Users,
   GraduationCap, Heart, Droplets, Home, Leaf, Tag, Clock,
-  Briefcase, Languages, Shield,
+  Briefcase, Languages, Shield, ListChecks, Sparkles, Star,
 } from "lucide-react";
 import { campaigns } from "@/data/campaigns";
-
+import { createVolunteerOpportunity } from "@/services/volunteerService";
+import { toast } from "sonner";
 const CATEGORIES = [
   { id: "teaching", label: "Teaching", icon: GraduationCap },
   { id: "healthcare", label: "Healthcare", icon: Heart },
@@ -36,7 +37,7 @@ const COMMITMENT_OPTIONS = [
   { id: "long-term", label: "Long-term (3+ months)" },
 ];
 
-const STEPS = ["Details", "Requirements", "Schedule", "Review"];
+const STEPS = ["Details", "Requirements", "Activities & Impact", "Schedule", "Review"];
 
 const CreateVolunteer = () => {
   const navigate = useNavigate();
@@ -47,6 +48,7 @@ const CreateVolunteer = () => {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
   const [linkedCampaign, setLinkedCampaign] = useState("");
 
   // Step 1: Requirements
@@ -54,9 +56,14 @@ const CreateVolunteer = () => {
   const [spots, setSpots] = useState("10");
   const [ageMin, setAgeMin] = useState("18");
   const [commitmentType, setCommitmentType] = useState("short-term");
-  const [additionalReqs, setAdditionalReqs] = useState("");
+  const [requirements, setRequirements] = useState("");
 
-  // Step 2: Schedule
+  // Step 2: Activities & Impact
+  const [activities, setActivities] = useState("");
+  const [whyItMatters, setWhyItMatters] = useState("");
+  const [benefits, setBenefits] = useState("");
+
+  // Step 3: Schedule
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [dailyHours, setDailyHours] = useState("6");
@@ -75,20 +82,54 @@ const CreateVolunteer = () => {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return title.trim() && category && location.trim() && description.trim().length >= 20;
+        return title.trim() && category && location.trim() && description.trim().length >= 20 && longDescription.trim().length >= 40;
       case 1:
-        return skills.length > 0 && Number(spots) >= 1;
+        return skills.length > 0 && Number(spots) >= 1 && requirements.trim().length > 0;
       case 2:
-        return startDate && endDate && contactName.trim() && contactEmail.trim();
+        return activities.trim().length > 0 && whyItMatters.trim().length >= 20 && benefits.trim().length > 0;
       case 3:
+        return startDate && endDate && contactName.trim() && contactEmail.trim();
+      case 4:
         return true;
       default:
         return false;
     }
   };
 
-  const handleSubmit = () => {
-    navigate("/");
+
+  
+  const handleSubmit = async () => {
+    try {
+      await createVolunteerOpportunity({
+        title,
+        category,
+        location,
+        description,
+        longDescription,
+        linkedCampaignId: linkedCampaign || null,
+        requiredSkills: skills,
+        volunteerSpots: Number(spots),
+        minimumAge: Number(ageMin),
+        commitmentType,
+        requirements,
+        activities,
+        whyItMatters,
+        benefits,
+        startDate,
+        endDate,
+        dailyHours: Number(dailyHours),
+        contactName,
+        contactEmail,
+        contactPhone: contactPhone || null,
+      });
+      toast.success("Volunteer request submitted! We'll review it within 24 hours.");
+      navigate("/");
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors).join(", ")   // Spring field-level errors
+        : err?.message ?? "Something went wrong";
+      toast.error(msg);
+    }
   };
 
   const stepVariants = {
@@ -223,6 +264,23 @@ const CreateVolunteer = () => {
                     </p>
                   </div>
 
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Long Description *</label>
+                    <Textarea
+                      placeholder="Describe the volunteer opportunity, what volunteers will do, and its impact..."
+                      value={longDescription}
+                      onChange={(e) => setLongDescription(e.target.value)}
+                      rows={5}
+                      className="min-h-[120px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {longDescription.length} characters (minimum 40)
+                    </p>
+                  </div>
+
+
+
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">
                       Link to Campaign (optional)
@@ -338,20 +396,79 @@ const CreateVolunteer = () => {
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">
-                      Additional Requirements (optional)
+                      Eligibility and Requirements 
                     </label>
                     <Textarea
                       placeholder="e.g. Must be comfortable in remote areas, bring own sleeping bag..."
-                      value={additionalReqs}
-                      onChange={(e) => setAdditionalReqs(e.target.value)}
+                      value={requirements}
+                      onChange={(e) => setRequirements(e.target.value)}
                       rows={3}
                     />
                   </div>
                 </>
               )}
 
-              {/* Step 2: Schedule & Contact */}
+              {/* Step 2: Activities & Impact */}
               {step === 2 && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <ListChecks className="w-4 h-4 text-primary" />
+                      What Volunteers Will Do *
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      One activity per line. These appear as a checklist on the opportunity page.
+                    </p>
+                    <Textarea
+                      placeholder={"Conduct daily English language classes for groups of 15-20 children\nIntroduce basic computer literacy using donated laptops\nOrganize creative learning activities and cultural exchange sessions"}
+                      value={activities}
+                      onChange={(e) => setActivities(e.target.value)}
+                      rows={6}
+                      className="min-h-[140px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      Why This Matters *
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Explain the impact and meaning of this work for the community.
+                    </p>
+                    <Textarea
+                      placeholder="English literacy opens doors to higher education and employment opportunities for these children..."
+                      value={whyItMatters}
+                      onChange={(e) => setWhyItMatters(e.target.value)}
+                      rows={5}
+                      className="min-h-[120px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {whyItMatters.length} characters (minimum 20)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Star className="w-4 h-4 text-primary" />
+                      What Volunteers Get *
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      One benefit per line (accommodation, meals, certificate, etc.).
+                    </p>
+                    <Textarea
+                      placeholder={"Free accommodation in community homestays\nTwo meals per day provided\nLocal transportation covered\nCertificate of volunteer service"}
+                      value={benefits}
+                      onChange={(e) => setBenefits(e.target.value)}
+                      rows={6}
+                      className="min-h-[140px]"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Schedule & Contact */}
+              {step === 3 && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -442,8 +559,8 @@ const CreateVolunteer = () => {
                 </>
               )}
 
-              {/* Step 3: Review */}
-              {step === 3 && (
+              {/* Step 4: Review */}
+              {step === 4 && (
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                     <h3 className="font-playfair text-xl font-bold text-foreground">
@@ -463,6 +580,8 @@ const CreateVolunteer = () => {
                     </div>
 
                     <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-sm text-muted-foreground">{longDescription}</p>
+
 
                     {linkedCampaignData && (
                       <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
@@ -519,6 +638,55 @@ const CreateVolunteer = () => {
                         </div>
                       </div>
                     </div>
+
+                    {(activities.trim() || whyItMatters.trim() || benefits.trim() || requirements.trim()) && (
+                      <div className="border-t border-border pt-4 space-y-4">
+                        {activities.trim() && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                              <ListChecks className="w-3 h-3" /> What volunteers will do
+                            </p>
+                            <ul className="space-y-1 text-sm text-foreground list-disc pl-5">
+                              {activities.split("\n").filter((l) => l.trim()).map((l, i) => (
+                                <li key={i}>{l.trim()}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {whyItMatters.trim() && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> Why this matters
+                            </p>
+                            <p className="text-sm text-foreground whitespace-pre-line">{whyItMatters}</p>
+                          </div>
+                        )}
+                        {benefits.trim() && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                              <Star className="w-3 h-3" /> What volunteers get
+                            </p>
+                            <ul className="space-y-1 text-sm text-foreground list-disc pl-5">
+                              {benefits.split("\n").filter((l) => l.trim()).map((l, i) => (
+                                <li key={i}>{l.trim()}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {requirements.trim() && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                              <Star className="w-3 h-3" /> Requirements
+                            </p>
+                            <ul className="space-y-1 text-sm text-foreground list-disc pl-5">
+                              {requirements.split("\n").filter((l) => l.trim()).map((l, i) => (
+                                <li key={i}>{l.trim()}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="border-t border-border pt-4 text-sm">
                       <p className="text-muted-foreground mb-1 flex items-center gap-1">
