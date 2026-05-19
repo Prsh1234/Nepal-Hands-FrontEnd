@@ -1,7 +1,5 @@
 
 import { motion } from "framer-motion";
-import { getVolunteerById } from "@/data/volunteers";
-import { getCampaignById } from "@/data/campaigns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -272,63 +270,70 @@ const VolunteerDetails = () => {
           </div>
 
           {/* Right Column */}
-          <div className="space-y-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              className="bg-card rounded-xl p-6 shadow-card border border-border sticky top-24">
-              <h3 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                <UserPlus size={20} className="text-primary" /> Apply to Volunteer
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Full Name *</label>
-                  <Input placeholder="Your full name" value={applicantName} onChange={(e) => setApplicantName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Email *</label>
-                  <Input type="email" placeholder="your@email.com" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Phone</label>
-                  <Input type="tel" placeholder="+977-..." value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Why do you want to volunteer?</label>
-                  <Textarea placeholder="Share your motivation..." value={applicantMessage} onChange={(e) => setApplicantMessage(e.target.value)} rows={4} />
-                </div>
-                <Button className="w-full gap-2 text-base h-12" size="lg">
-                  <Heart size={18} /> Submit Application
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  You'll receive a confirmation email within 48 hours.
-                </p>
-              </div>
-            </motion.div>
+          <div className="relative self-start">
 
-            {/* Contact Info */}
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border">
-              <h4 className="font-display font-semibold text-foreground mb-4">Contact Person</h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">
-                      {opportunity.contactName.split(" ").map((n: string) => n[0]).join("")}
-                    </span>
+            <div className="sticky top-24 space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-card rounded-xl p-6 shadow-card border border-border"
+              >
+                <h3 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <UserPlus size={20} className="text-primary" /> Apply to Volunteer
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1 block">Full Name *</label>
+                    <Input placeholder="Your full name" value={applicantName} onChange={(e) => setApplicantName(e.target.value)} />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground text-sm">{opportunity.contactName}</p>
+                    <label className="text-sm font-medium text-foreground mb-1 block">Email *</label>
+                    <Input type="email" placeholder="your@email.com" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} />
                   </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1 block">Phone</label>
+                    <Input type="tel" placeholder="+977-..." value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1 block">Why do you want to volunteer?</label>
+                    <Textarea placeholder="Share your motivation..." value={applicantMessage} onChange={(e) => setApplicantMessage(e.target.value)} rows={4} />
+                  </div>
+                  <Button className="w-full gap-2 text-base h-12" size="lg">
+                    <Heart size={18} /> Submit Application
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    You'll receive a confirmation email within 48 hours.
+                  </p>
                 </div>
-                <div className="space-y-2 pt-2 border-t border-border">
-                  <a href={`mailto:${opportunity.contactEmail}`}
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                    <Mail size={14} /> {opportunity.contactEmail}
-                  </a>
-                  {opportunity.contactPhone && (
-                    <a href={`tel:${opportunity.contactPhone}`}
+              </motion.div>
+
+              {/* Contact Info */}
+              <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                <h4 className="font-display font-semibold text-foreground mb-4">Contact Person</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary">
+                        {opportunity.contactName.split(" ").map((n: string) => n[0]).join("")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground text-sm">{opportunity.contactName}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <a href={`mailto:${opportunity.contactEmail}`}
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                      <Phone size={14} /> {opportunity.contactPhone}
+                      <Mail size={14} /> {opportunity.contactEmail}
                     </a>
-                  )}
+                    {opportunity.contactPhone && (
+                      <a href={`tel:${opportunity.contactPhone}`}
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+                        <Phone size={14} /> {opportunity.contactPhone}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

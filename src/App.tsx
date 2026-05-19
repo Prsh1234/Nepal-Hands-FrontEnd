@@ -19,6 +19,7 @@ import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import OAuthRedirect from "./pages/OAuthRedirect.tsx";
 import Voldel from "./pages/Voldel.tsx";
+import Camdel from "./pages/camdel.tsx";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,8 @@ const App = () => (
           <Route path="/volunteer/create" element={<CreateVolunteer />} />
           <Route path="/volunteer/:id" element={<VolunteerDetails />} />
           <Route path="/voldel/:id" element={<Voldel />} />
+          <Route path="/camdel/:id" element={<Camdel />} />
+
           <Route path="/volunteer/:id/chat" element={<VolunteerChat />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />

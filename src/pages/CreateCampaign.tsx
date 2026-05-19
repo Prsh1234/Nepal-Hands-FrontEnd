@@ -7,11 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { toast } from "sonner";
 import {
   ArrowLeft, ArrowRight, Check, Upload, X,
   Droplets, GraduationCap, Heart, Home, Leaf, Users,
   Image as ImageIcon,
+  ListChecks,
+  Shield,
+  Calendar,
 } from "lucide-react";
+import { createCampaign } from "@/services/campaignService";
 
 const CATEGORIES = [
   { id: "water", label: "Water & Sanitation", icon: Droplets },
@@ -22,7 +27,7 @@ const CATEGORIES = [
   { id: "empowerment", label: "Empowerment", icon: Users },
 ];
 
-const STEPS = ["Basics", "Story", "Goal", "Media", "Review"];
+const STEPS = ["Basics", "Story", "Goal", "Media", "Schedule", "Review"];
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
@@ -32,40 +37,102 @@ const CreateCampaign = () => {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
-  const [shortDesc, setShortDesc] = useState("");
-  const [longDesc, setLongDesc] = useState("");
-  const [goal, setGoal] = useState("");
+  const [description, setdescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
+  const [projectScope, setProjectScope] = useState("");
+  const [goal, setGoal] = useState<number>(0);
   const [duration, setDuration] = useState("30");
-  const [orgName, setOrgName] = useState("");
+  const [organizer, setOrganizer] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  // Step 3: Schedule
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
   const canProceed = () => {
     switch (step) {
-      case 0: return title.trim() && category && location.trim();
-      case 1: return shortDesc.trim() && longDesc.trim().length >= 50;
-      case 2: return Number(goal) >= 1000 && orgName.trim();
-      case 3: return true; // images optional
-      case 4: return true;
-      default: return false;
+      case 0:
+        return title.trim() && category && location.trim();
+      case 1:
+        return description.trim() && longDescription.trim().length >= 50 && projectScope.trim().length > 0;
+      case 2:
+        return Number(goal) >= 1000 && organizer.trim();
+      case 3:
+        return true; // images optional
+      case 4:
+        return startDate && endDate && contactName.trim() && contactEmail.trim();
+      case 5:
+        return true;
+      default:
+        return false;
     }
   };
 
-  const handleImageUpload = () => {
-    // Simulate image upload with placeholder
-    if (images.length < 5) {
-      setImages([...images, `/placeholder.svg`]);
-    }
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+
+    if (!files) return;
+
+    const remainingSlots = 5 - images.length;
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+
+    // preview URLs
+    const imageUrls = selectedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setImages((prev) => [...prev, ...imageUrls]);
+
+    // actual files for backend
+    setImageFiles((prev) => [...prev, ...selectedFiles]);
+
+    e.target.value = "";
   };
 
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    // In a real app this would save to DB
-    navigate("/");
+
+  const handleSubmit = async () => {
+    try {
+      const coverImageFile = imageFiles[0] || null;
+      const galleryImages = imageFiles.slice(1);
+      await createCampaign({
+        title,
+        category,
+        location,
+        description,
+        longDescription,
+        projectScope,
+        goal,
+        duration,
+        organizer,
+        startDate,
+        endDate,
+        contactName,
+        contactEmail,
+        contactPhone: contactPhone || null,
+        coverImage: coverImageFile,   // File
+        images: galleryImages,        // File[]
+      });
+      toast.success("Volunteer request submitted! We'll review it within 24 hours.");
+      navigate("/");
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors).join(", ")   // Spring field-level errors
+        : err?.message ?? "Something went wrong";
+      toast.error(msg);
+    }
   };
 
   const stepVariants = {
@@ -105,18 +172,16 @@ const CreateCampaign = () => {
               <button
                 key={s}
                 onClick={() => i < step && setStep(i)}
-                className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${
-                  i <= step ? "text-primary" : "text-muted-foreground"
-                } ${i < step ? "cursor-pointer" : "cursor-default"}`}
+                className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${i <= step ? "text-primary" : "text-muted-foreground"
+                  } ${i < step ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-                    i < step
-                      ? "bg-primary text-primary-foreground"
-                      : i === step
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${i < step
+                    ? "bg-primary text-primary-foreground"
+                    : i === step
                       ? "bg-primary/10 text-primary border-2 border-primary"
                       : "bg-muted text-muted-foreground"
-                  }`}
+                    }`}
                 >
                   {i < step ? <Check className="w-4 h-4" /> : i + 1}
                 </span>
@@ -159,11 +224,10 @@ const CreateCampaign = () => {
                           <button
                             key={cat.id}
                             onClick={() => setCategory(cat.id)}
-                            className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                              category === cat.id
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-border hover:border-primary/40 text-foreground"
-                            }`}
+                            className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-all ${category === cat.id
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border hover:border-primary/40 text-foreground"
+                              }`}
                           >
                             <Icon className="w-4 h-4 shrink-0" />
                             {cat.label}
@@ -191,26 +255,39 @@ const CreateCampaign = () => {
                     <label className="text-sm font-semibold text-foreground">Short Description *</label>
                     <Textarea
                       placeholder="Briefly describe your campaign in 1-2 sentences..."
-                      value={shortDesc}
-                      onChange={(e) => setShortDesc(e.target.value)}
+                      value={description}
+                      onChange={(e) => setdescription(e.target.value)}
                       maxLength={200}
                       rows={3}
                     />
-                    <p className="text-xs text-muted-foreground">{shortDesc.length}/200 characters</p>
+                    <p className="text-xs text-muted-foreground">{description.length}/200 characters</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Full Story *</label>
+                    <label className="text-sm font-semibold text-foreground">Long Description*</label>
                     <Textarea
                       placeholder="Tell your story in detail. Explain the problem, your solution, and how the funds will be used..."
-                      value={longDesc}
-                      onChange={(e) => setLongDesc(e.target.value)}
+                      value={longDescription}
+                      onChange={(e) => setLongDescription(e.target.value)}
                       rows={10}
                       className="min-h-[200px]"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {longDesc.length} characters (minimum 50)
+                      {longDescription.length} characters (minimum 50)
                     </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Project Scope *</label>
+                    <p className="text-xs text-muted-foreground">
+                      One scope per line. These appear as a checklist on the donation page.
+                    </p>
+                    <Textarea
+                      placeholder={"Rebuild 3 primary schools with earthquake-resistant design\nFurnish classrooms with modern learning materials"}
+                      value={projectScope}
+                      onChange={(e) => setProjectScope(e.target.value)}
+                      rows={6}
+                      className="min-h-[140px]"
+                    />
                   </div>
                 </>
               )}
@@ -222,8 +299,8 @@ const CreateCampaign = () => {
                     <label className="text-sm font-semibold text-foreground">Organization / Creator Name *</label>
                     <Input
                       placeholder="e.g. Nepal Water Foundation"
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
+                      value={organizer}
+                      onChange={(e) => setOrganizer(e.target.value)}
                     />
                   </div>
 
@@ -237,7 +314,7 @@ const CreateCampaign = () => {
                         type="number"
                         placeholder="500000"
                         value={goal}
-                        onChange={(e) => setGoal(e.target.value)}
+                        onChange={(e) => setGoal(e.target.value === "" ? 0 : Number(e.target.value))}
                         className="pl-12"
                         min={1000}
                       />
@@ -259,11 +336,10 @@ const CreateCampaign = () => {
                         <button
                           key={d}
                           onClick={() => setDuration(d)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
-                            duration === d
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-border hover:border-primary/40 text-foreground"
-                          }`}
+                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${duration === d
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border hover:border-primary/40 text-foreground"
+                            }`}
                         >
                           {d} days
                         </button>
@@ -302,20 +378,98 @@ const CreateCampaign = () => {
                     ))}
 
                     {images.length < 5 && (
-                      <button
-                        onClick={handleImageUpload}
-                        className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-                      >
+                      <label className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
                         <Upload className="w-6 h-6" />
                         <span className="text-xs font-medium">Add Image</span>
-                      </button>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          hidden
+                          onChange={handleImageUpload}
+                        />
+                      </label>
                     )}
                   </div>
                 </>
               )}
 
-              {/* Step 4: Review */}
+              {/* Step 4: Schedule & Contact */}
               {step === 4 && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground">
+                        Start Date *
+                      </label>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground">
+                        End Date *
+                      </label>
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+
+
+                  <div className="border-t border-border pt-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      Contact Information
+                    </h3>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground">
+                        Contact Person *
+                      </label>
+                      <Input
+                        placeholder="Full name"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">
+                          Email *
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder="contact@org.np"
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">
+                          Phone (optional)
+                        </label>
+                        <Input
+                          type="tel"
+                          placeholder="+977-XXXXXXXXXX"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Step 5: Review */}
+              {step === 5 && (
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                     <h3 className="font-playfair text-xl font-bold text-foreground">{title}</h3>
@@ -332,20 +486,50 @@ const CreateCampaign = () => {
                       </span>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">{shortDesc}</p>
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-sm text-muted-foreground">{longDescription}</p>
 
                     <div className="border-t border-border pt-4 grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Organization</p>
-                        <p className="font-semibold text-foreground">{orgName}</p>
-                      </div>
                       <div>
                         <p className="text-muted-foreground">Goal</p>
                         <p className="font-semibold text-primary">
                           NPR {Number(goal).toLocaleString("en-IN")}
                         </p>
                       </div>
+                      <div>
+                        <p className="text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> Dates
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {startDate} — {endDate}
+                        </p>
+                      </div>
                     </div>
+
+                    {(projectScope.trim()) && (
+                      <div className="border-t border-border pt-4 space-y-4">
+                        {projectScope.trim() && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                              <ListChecks className="w-3 h-3" /> Project Scope
+                            </p>
+                            <ul className="space-y-1 text-sm text-foreground list-disc pl-5">
+                              {projectScope.split("\n").filter((l) => l.trim()).map((l, i) => (
+                                <li key={i}>{l.trim()}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="border-t border-border pt-4 grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Organization</p>
+                        <p className="font-semibold text-foreground">{organizer}</p>
+                      </div>
+                    </div>
+
 
                     {images.length > 0 && (
                       <div className="flex gap-2 pt-2">
@@ -359,7 +543,21 @@ const CreateCampaign = () => {
                         </span>
                       </div>
                     )}
+
+
+                    <div className="border-t border-border pt-4 text-sm">
+                      <p className="text-muted-foreground mb-1 flex items-center gap-1">
+                        <Shield className="w-3 h-3" /> Contact
+                      </p>
+                      <p className="font-semibold text-foreground">{contactName}</p>
+                      <p className="text-muted-foreground">
+                        {contactEmail}
+                        {contactPhone && ` • ${contactPhone}`}
+                      </p>
+                    </div>
                   </div>
+
+
 
                   <div className="rounded-2xl border border-border bg-accent/30 p-4 text-sm text-muted-foreground">
                     <p className="font-semibold text-foreground mb-1">Before you publish</p>
@@ -378,7 +576,7 @@ const CreateCampaign = () => {
           <div className="flex justify-between mt-10 pt-6 border-t border-border">
             <Button
               variant="outline"
-              onClick={() => step > 0 ? setStep(step - 1) : navigate("/")}
+              onClick={() => (step > 0 ? setStep(step - 1) : navigate(-1))}
               className="rounded-xl"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
