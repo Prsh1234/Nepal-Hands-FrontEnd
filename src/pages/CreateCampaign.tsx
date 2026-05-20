@@ -40,11 +40,14 @@ const CreateCampaign = () => {
   const [description, setdescription] = useState("");
   const [longDescription, setLongDescription] = useState("");
   const [projectScope, setProjectScope] = useState("");
-  const [goal, setGoal] = useState<number>(0);
+  const [goal, setGoal] = useState<string>("");
   const [duration, setDuration] = useState("30");
   const [organizer, setOrganizer] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryImageFiles, setGalleryImageFiles] = useState<File[]>([]);
   // Step 3: Schedule
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -53,7 +56,8 @@ const CreateCampaign = () => {
   const [contactPhone, setContactPhone] = useState("");
 
   const progress = ((step + 1) / STEPS.length) * 100;
-
+  const goalNumber = Number(goal);
+  const hasGoal = goal.trim() !== "";
   const canProceed = () => {
     switch (step) {
       case 0:
@@ -61,9 +65,9 @@ const CreateCampaign = () => {
       case 1:
         return description.trim() && longDescription.trim().length >= 50 && projectScope.trim().length > 0;
       case 2:
-        return Number(goal) >= 1000 && organizer.trim();
+        return goalNumber >= 1000 && organizer.trim();
       case 3:
-        return true; // images optional
+        return !!coverImageFile;
       case 4:
         return startDate && endDate && contactName.trim() && contactEmail.trim();
       case 5:
@@ -73,40 +77,53 @@ const CreateCampaign = () => {
     }
   };
 
-  const handleImageUpload = (
+  const handleCoverUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setCoverImage(URL.createObjectURL(file));
+    setCoverImageFile(file);
+
+    e.target.value = "";
+  };
+
+  const handleGalleryUpload = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files;
 
     if (!files) return;
 
-    const remainingSlots = 5 - images.length;
+    const remainingSlots = 4 - galleryImages.length;
 
     const selectedFiles = Array.from(files).slice(0, remainingSlots);
 
-    // preview URLs
     const imageUrls = selectedFiles.map((file) =>
       URL.createObjectURL(file)
     );
 
-    setImages((prev) => [...prev, ...imageUrls]);
-
-    // actual files for backend
-    setImageFiles((prev) => [...prev, ...selectedFiles]);
+    setGalleryImages((prev) => [...prev, ...imageUrls]);
+    setGalleryImageFiles((prev) => [...prev, ...selectedFiles]);
 
     e.target.value = "";
   };
 
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
-    setImageFiles(imageFiles.filter((_, i) => i !== index));
+  const removeCoverImage = () => {
+    setCoverImage(null);
+    setCoverImageFile(null);
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+    setGalleryImageFiles(galleryImageFiles.filter((_, i) => i !== index));
   };
 
 
   const handleSubmit = async () => {
     try {
-      const coverImageFile = imageFiles[0] || null;
-      const galleryImages = imageFiles.slice(1);
       await createCampaign({
         title,
         category,
@@ -114,7 +131,7 @@ const CreateCampaign = () => {
         description,
         longDescription,
         projectScope,
-        goal,
+        goal: goalNumber,
         duration,
         organizer,
         startDate,
@@ -122,8 +139,8 @@ const CreateCampaign = () => {
         contactName,
         contactEmail,
         contactPhone: contactPhone || null,
-        coverImage: coverImageFile,   // File
-        images: galleryImages,        // File[]
+        coverImage: coverImageFile,
+        images: galleryImageFiles,
       });
       toast.success("Volunteer request submitted! We'll review it within 24 hours.");
       navigate("/");
@@ -314,19 +331,23 @@ const CreateCampaign = () => {
                         type="number"
                         placeholder="500000"
                         value={goal}
-                        onChange={(e) => setGoal(e.target.value === "" ? 0 : Number(e.target.value))}
+                        onChange={(e) => setGoal(e.target.value)}
                         className="pl-12"
                         min={1000}
                       />
                     </div>
-                    {goal && Number(goal) >= 1000 && (
+                    {hasGoal && goalNumber >= 1000 && (
                       <p className="text-xs text-muted-foreground">
-                        Goal: NPR {Number(goal).toLocaleString("en-IN")}
+                        Goal: NPR {goalNumber.toLocaleString("en-IN")}
                       </p>
                     )}
-                    {goal && Number(goal) < 1000 && (
-                      <p className="text-xs text-destructive">Minimum goal is NPR 1,000</p>
+
+                    {hasGoal && goalNumber < 1000 && (
+                      <p className="text-xs text-destructive">
+                        Minimum goal is NPR 1,000
+                      </p>
                     )}
+
                   </div>
 
                   <div className="space-y-2">
@@ -351,48 +372,106 @@ const CreateCampaign = () => {
 
               {/* Step 3: Media */}
               {step === 3 && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Campaign Images</label>
-                    <p className="text-xs text-muted-foreground">
-                      Upload up to 5 images. The first image will be used as the cover.
-                    </p>
-                  </div>
+                <div className="space-y-8">
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {images.map((img, i) => (
-                      <div key={i} className="relative aspect-video rounded-xl overflow-hidden border border-border group">
-                        <img src={img} alt={`Upload ${i + 1}`} className="w-full h-full object-cover" />
+                  {/* Cover Image */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-semibold text-foreground">
+                        Cover Image *
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        This image appears on the campaign card and hero section.
+                      </p>
+                    </div>
+
+                    {coverImage ? (
+                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border group">
+                        <img
+                          src={coverImage}
+                          alt="Cover"
+                          className="w-full h-full object-cover"
+                        />
+
                         <button
-                          onClick={() => removeImage(i)}
-                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={removeCoverImage}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </button>
-                        {i === 0 && (
-                          <span className="absolute bottom-2 left-2 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                            Cover
-                          </span>
-                        )}
-                      </div>
-                    ))}
 
-                    {images.length < 5 && (
+                        <span className="absolute bottom-2 left-2 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                          Cover
+                        </span>
+                      </div>
+                    ) : (
                       <label className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
-                        <Upload className="w-6 h-6" />
-                        <span className="text-xs font-medium">Add Image</span>
+                        <ImageIcon className="w-8 h-8" />
+                        <span className="text-sm font-medium">
+                          Upload Cover Image
+                        </span>
 
                         <input
                           type="file"
                           accept="image/*"
-                          multiple
                           hidden
-                          onChange={handleImageUpload}
+                          onChange={handleCoverUpload}
                         />
                       </label>
                     )}
                   </div>
-                </>
+
+                  {/* Gallery Images */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-semibold text-foreground">
+                        Gallery Images
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload up to 4 additional images.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {galleryImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="relative aspect-video rounded-xl overflow-hidden border border-border group"
+                        >
+                          <img
+                            src={img}
+                            alt={`Gallery ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+
+                          <button
+                            onClick={() => removeGalleryImage(i)}
+                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {galleryImages.length < 4 && (
+                        <label className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                          <Upload className="w-6 h-6" />
+                          <span className="text-xs font-medium">
+                            Add Images
+                          </span>
+
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            hidden
+                            onChange={handleGalleryUpload}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Step 4: Schedule & Contact */}
@@ -531,16 +610,35 @@ const CreateCampaign = () => {
                     </div>
 
 
-                    {images.length > 0 && (
-                      <div className="flex gap-2 pt-2">
-                        {images.map((img, i) => (
-                          <div key={i} className="w-16 h-12 rounded-lg overflow-hidden border border-border">
-                            <img src={img} alt="" className="w-full h-full object-cover" />
+                    {(coverImage || galleryImages.length > 0) && (
+                      <div className="flex gap-2 pt-2 flex-wrap">
+
+                        {coverImage && (
+                          <div className="w-16 h-12 rounded-lg overflow-hidden border-2 border-primary relative">
+                            <img
+                              src={coverImage}
+                              alt="Cover"
+                              className="w-full h-full object-cover"
+                            />
+
+                            <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-primary text-primary-foreground">
+                              Cover
+                            </span>
+                          </div>
+                        )}
+
+                        {galleryImages.map((img, i) => (
+                          <div
+                            key={i}
+                            className="w-16 h-12 rounded-lg overflow-hidden border border-border"
+                          >
+                            <img
+                              src={img}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                         ))}
-                        <span className="text-xs text-muted-foreground self-center ml-1">
-                          {images.length} image{images.length > 1 ? "s" : ""}
-                        </span>
                       </div>
                     )}
 

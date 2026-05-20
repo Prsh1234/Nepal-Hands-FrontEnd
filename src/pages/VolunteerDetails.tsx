@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getVolunteerOpportunityById, VolunteerOpportunityResponse } from "@/services/volunteerService";
 import { Loader2 } from "lucide-react";
+import ImageModal from "@/modal/ImageModal";
 
 
 
@@ -53,7 +54,7 @@ const VolunteerDetails = () => {
   const [applicantEmail, setApplicantEmail] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
   const [applicantMessage, setApplicantMessage] = useState("");
-
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -84,8 +85,16 @@ const VolunteerDetails = () => {
       <Navbar />
 
       {/* Hero Banner */}
-      <section className="pt-20 bg-gradient-hero text-primary-foreground">
-        <div className="container mx-auto px-4 py-12">
+      <section className="relative pt-20 text-primary-foreground">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={`data:image/jpeg;base64,${opportunity.coverImage}`}
+            alt={opportunity.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/70 to-foreground/40" />
+        </div>
+        <div className="container relative z-10 mx-auto px-4 py-12">
           <Link to="/" className="inline-flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground mb-6 transition-colors text-sm">
             <ArrowLeft size={16} /> Back to Home
           </Link>
@@ -221,6 +230,30 @@ const VolunteerDetails = () => {
                       ))}
                     </div>
                   </div>
+                  {opportunity.images?.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="font-display text-lg font-semibold text-foreground mb-3">
+                        Photos
+                      </h3>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {opportunity.images.slice(0, 4).map((src, i) => (
+                          <motion.img
+                            key={i}
+                            src={`data:image/jpeg;base64,${src}`}
+                            alt={`${opportunity.title} photo ${i + 1}`}
+                            loading="lazy"
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.08 }}
+                            onClick={() => setSelectedImage(src)}
+                            className="w-full h-40 sm:h-48 object-cover rounded-lg border border-border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
@@ -340,6 +373,11 @@ const VolunteerDetails = () => {
           </div>
         </div>
       </div>
+      <ImageModal
+        open={!!selectedImage}
+        image={selectedImage}
+        onClose={() => setSelectedImage(null)}
+      />
       <Footer />
     </div>
   );

@@ -11,6 +11,9 @@ import {
   ArrowLeft, ArrowRight, Check, Calendar, MapPin, Users,
   GraduationCap, Heart, Droplets, Home, Leaf, Tag, Clock,
   Briefcase, Languages, Shield, ListChecks, Sparkles, Star,
+  Upload,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import { campaigns } from "@/data/campaigns";
 import { createVolunteerOpportunity } from "@/services/volunteerService";
@@ -37,7 +40,7 @@ const COMMITMENT_OPTIONS = [
   { id: "long-term", label: "Long-term (3+ months)" },
 ];
 
-const STEPS = ["Details", "Requirements", "Activities & Impact", "Schedule", "Review"];
+const STEPS = ["Details", "Requirements", "Activities & Impact", "Media", "Schedule", "Review"];
 
 const CreateVolunteer = () => {
   const navigate = useNavigate();
@@ -71,7 +74,57 @@ const CreateVolunteer = () => {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
 
+  // Step 4: Image
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryImageFiles, setGalleryImageFiles] = useState<File[]>([]);
+
   const progress = ((step + 1) / STEPS.length) * 100;
+  const handleCoverUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setCoverImage(URL.createObjectURL(file));
+    setCoverImageFile(file);
+
+    e.target.value = "";
+  };
+
+  const handleGalleryUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+
+    if (!files) return;
+
+    const remainingSlots = 4 - galleryImages.length;
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+
+    const imageUrls = selectedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setGalleryImages((prev) => [...prev, ...imageUrls]);
+    setGalleryImageFiles((prev) => [...prev, ...selectedFiles]);
+
+    e.target.value = "";
+  };
+
+  const removeCoverImage = () => {
+    setCoverImage(null);
+    setCoverImageFile(null);
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+    setGalleryImageFiles(galleryImageFiles.filter((_, i) => i !== index));
+  };
 
   const toggleSkill = (skill: string) => {
     setSkills((prev) =>
@@ -88,8 +141,10 @@ const CreateVolunteer = () => {
       case 2:
         return activities.trim().length > 0 && whyItMatters.trim().length >= 20 && benefits.trim().length > 0;
       case 3:
-        return startDate && endDate && contactName.trim() && contactEmail.trim();
+        return !!coverImageFile;
       case 4:
+        return startDate && endDate && contactName.trim() && contactEmail.trim();
+      case 5:
         return true;
       default:
         return false;
@@ -97,7 +152,7 @@ const CreateVolunteer = () => {
   };
 
 
-  
+
   const handleSubmit = async () => {
     try {
       await createVolunteerOpportunity({
@@ -118,6 +173,8 @@ const CreateVolunteer = () => {
         startDate,
         endDate,
         dailyHours: Number(dailyHours),
+        coverImage: coverImageFile,
+        images: galleryImageFiles,
         contactName,
         contactEmail,
         contactPhone: contactPhone || null,
@@ -171,18 +228,16 @@ const CreateVolunteer = () => {
               <button
                 key={s}
                 onClick={() => i < step && setStep(i)}
-                className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${
-                  i <= step ? "text-primary" : "text-muted-foreground"
-                } ${i < step ? "cursor-pointer" : "cursor-default"}`}
+                className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${i <= step ? "text-primary" : "text-muted-foreground"
+                  } ${i < step ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-                    i < step
-                      ? "bg-primary text-primary-foreground"
-                      : i === step
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${i < step
+                    ? "bg-primary text-primary-foreground"
+                    : i === step
                       ? "bg-primary/10 text-primary border-2 border-primary"
                       : "bg-muted text-muted-foreground"
-                  }`}
+                    }`}
                 >
                   {i < step ? <Check className="w-4 h-4" /> : i + 1}
                 </span>
@@ -227,11 +282,10 @@ const CreateVolunteer = () => {
                           <button
                             key={cat.id}
                             onClick={() => setCategory(cat.id)}
-                            className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                              category === cat.id
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-border hover:border-primary/40 text-foreground"
-                            }`}
+                            className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-all ${category === cat.id
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border hover:border-primary/40 text-foreground"
+                              }`}
                           >
                             <Icon className="w-4 h-4 shrink-0" />
                             {cat.label}
@@ -291,11 +345,10 @@ const CreateVolunteer = () => {
                     <div className="space-y-2">
                       <button
                         onClick={() => setLinkedCampaign("")}
-                        className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${
-                          linkedCampaign === ""
-                            ? "border-primary bg-primary/5 text-primary font-medium"
-                            : "border-border hover:border-primary/40 text-muted-foreground"
-                        }`}
+                        className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${linkedCampaign === ""
+                          ? "border-primary bg-primary/5 text-primary font-medium"
+                          : "border-border hover:border-primary/40 text-muted-foreground"
+                          }`}
                       >
                         Standalone — not linked to any campaign
                       </button>
@@ -303,11 +356,10 @@ const CreateVolunteer = () => {
                         <button
                           key={c.id}
                           onClick={() => setLinkedCampaign(c.id)}
-                          className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${
-                            linkedCampaign === c.id
-                              ? "border-primary bg-primary/5 text-primary font-medium"
-                              : "border-border hover:border-primary/40 text-foreground"
-                          }`}
+                          className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${linkedCampaign === c.id
+                            ? "border-primary bg-primary/5 text-primary font-medium"
+                            : "border-border hover:border-primary/40 text-foreground"
+                            }`}
                         >
                           <span className="font-medium">{c.title}</span>
                           <span className="block text-xs text-muted-foreground mt-0.5">
@@ -333,11 +385,10 @@ const CreateVolunteer = () => {
                         <button
                           key={skill}
                           onClick={() => toggleSkill(skill)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${
-                            skills.includes(skill)
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border hover:border-primary/40 text-foreground"
-                          }`}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${skills.includes(skill)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/40 text-foreground"
+                            }`}
                         >
                           <Tag className="w-3 h-3" />
                           {skill}
@@ -382,11 +433,10 @@ const CreateVolunteer = () => {
                         <button
                           key={opt.id}
                           onClick={() => setCommitmentType(opt.id)}
-                          className={`p-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${
-                            commitmentType === opt.id
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-border hover:border-primary/40 text-foreground"
-                          }`}
+                          className={`p-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${commitmentType === opt.id
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border hover:border-primary/40 text-foreground"
+                            }`}
                         >
                           {opt.label}
                         </button>
@@ -396,7 +446,7 @@ const CreateVolunteer = () => {
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">
-                      Eligibility and Requirements 
+                      Eligibility and Requirements
                     </label>
                     <Textarea
                       placeholder="e.g. Must be comfortable in remote areas, bring own sleeping bag..."
@@ -467,8 +517,110 @@ const CreateVolunteer = () => {
                 </>
               )}
 
-              {/* Step 3: Schedule & Contact */}
               {step === 3 && (
+                <div className="space-y-8">
+
+                  {/* Cover Image */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-semibold text-foreground">
+                        Cover Image *
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        This image appears on the campaign card and hero section.
+                      </p>
+                    </div>
+
+                    {coverImage ? (
+                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border group">
+                        <img
+                          src={coverImage}
+                          alt="Cover"
+                          className="w-full h-full object-cover"
+                        />
+
+                        <button
+                          onClick={removeCoverImage}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+
+                        <span className="absolute bottom-2 left-2 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                          Cover
+                        </span>
+                      </div>
+                    ) : (
+                      <label className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                        <ImageIcon className="w-8 h-8" />
+                        <span className="text-sm font-medium">
+                          Upload Cover Image
+                        </span>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={handleCoverUpload}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Gallery Images */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-semibold text-foreground">
+                        Gallery Images
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload up to 4 additional images.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {galleryImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="relative aspect-video rounded-xl overflow-hidden border border-border group"
+                        >
+                          <img
+                            src={img}
+                            alt={`Gallery ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+
+                          <button
+                            onClick={() => removeGalleryImage(i)}
+                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {galleryImages.length < 4 && (
+                        <label className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                          <Upload className="w-6 h-6" />
+                          <span className="text-xs font-medium">
+                            Add Images
+                          </span>
+
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            hidden
+                            onChange={handleGalleryUpload}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Step 4: Schedule & Contact */}
+              {step === 4 && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -502,11 +654,10 @@ const CreateVolunteer = () => {
                         <button
                           key={h}
                           onClick={() => setDailyHours(h)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
-                            dailyHours === h
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-border hover:border-primary/40 text-foreground"
-                          }`}
+                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${dailyHours === h
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border hover:border-primary/40 text-foreground"
+                            }`}
                         >
                           {h} hrs/day
                         </button>
@@ -559,8 +710,8 @@ const CreateVolunteer = () => {
                 </>
               )}
 
-              {/* Step 4: Review */}
-              {step === 4 && (
+              {/* Step 5: Review */}
+              {step === 5 && (
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                     <h3 className="font-playfair text-xl font-bold text-foreground">

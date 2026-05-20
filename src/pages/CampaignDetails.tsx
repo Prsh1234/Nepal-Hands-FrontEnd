@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getCampaignById, CampaignResponse } from "@/services/campaignService";
+import ImageModal from "@/modal/ImageModal";
 
 const formatNPR = (n: number) =>
   "NPR " + n.toLocaleString("en-IN");
@@ -29,6 +30,7 @@ const CampaignDetails = () => {
   const [donorMessage, setDonorMessage] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
 
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -189,6 +191,7 @@ const CampaignDetails = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.08 }}
+                            onClick={() => setSelectedImage(src)}
                             className="w-full h-40 sm:h-48 object-cover rounded-lg border border-border"
                           />
                         ))}
@@ -305,7 +308,11 @@ const CampaignDetails = () => {
           </div>
         </div>
       </div>
-
+      <ImageModal
+        open={!!selectedImage}
+        image={selectedImage}
+        onClose={() => setSelectedImage(null)}
+      />
       <Footer />
     </div>
   );

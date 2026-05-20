@@ -19,6 +19,8 @@ export interface VolunteerOpportunityRequest {
   startDate: string;
   endDate: string;
   dailyHours: number;
+  coverImage?: File | null;
+  images: File[];
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
@@ -42,6 +44,8 @@ export interface VolunteerOpportunityResponse {
     startDate: string;
     endDate: string;
     dailyHours: number;
+    coverImage?: string;
+    images: string[];
     contactName: string;
     contactEmail: string;
     contactPhone: string | null;
@@ -50,11 +54,54 @@ export interface VolunteerOpportunityResponse {
     updatedAt: string;
   }
 
+
 export const createVolunteerOpportunity = async (data: VolunteerOpportunityRequest) => {
-  const { data: response } = await api.post("/organizer/volunteer-opportunities", data);
+  const formData = new FormData();
+
+  formData.append("title", data.title);
+  formData.append("category", data.category);
+  formData.append("location", data.location);
+  formData.append("description", data.description);
+  formData.append("longDescription", data.longDescription);
+  formData.append("linkedCampaignId", data.linkedCampaignId || "");
+  formData.append("requiredSkills", data.requiredSkills.join(","));
+  formData.append("volunteerSpots", String(data.volunteerSpots));
+  formData.append("minimumAge", String(data.minimumAge));
+  formData.append("commitmentType", data.commitmentType);
+  formData.append("requirements", data.requirements);
+  formData.append("activities", data.activities);
+  formData.append("whyItMatters", data.whyItMatters);
+  formData.append("benefits", data.benefits);
+  formData.append("startDate", data.startDate);
+  formData.append("endDate", data.endDate);
+  formData.append("dailyHours", String(data.dailyHours));
+  formData.append("contactName", data.contactName);
+  formData.append("contactEmail", data.contactEmail);
+
+  if (data.contactPhone) {
+    formData.append("contactPhone", data.contactPhone);
+  }
+
+  if (data.coverImage) {
+    formData.append("coverImage", data.coverImage);
+  }
+
+  data.images.forEach((file) => {
+    formData.append("images", file);
+  });
+
+  const { data: response } = await api.post(
+    "/organizer/volunteer-opportunities",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
   return response;
 };
-
 
 export const getVolunteerOpportunities = async (params?: {
     category?: string;

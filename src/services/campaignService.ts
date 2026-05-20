@@ -35,8 +35,8 @@ export interface CampaignResponse {
     contactName: string;
     contactEmail: string;
     contactPhone: string | null;
-    coverImage?: File | null;
-    images: File[];
+    coverImage?: string;
+    images: string[];
     status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
     createdAt: string;
     updatedAt: string;
