@@ -92,6 +92,7 @@ const VolunteerDetails = () => {
             alt={opportunity.title}
             className="w-full h-full object-cover"
           />
+
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/70 to-foreground/40" />
         </div>
         <div className="container relative z-10 mx-auto px-4 py-12">
@@ -247,7 +248,7 @@ const VolunteerDetails = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.08 }}
-                            onClick={() => setSelectedImage(src)}
+                            onClick={() => setSelectedImage(`data:image/jpeg;base64,${src}`)}
                             className="w-full h-40 sm:h-48 object-cover rounded-lg border border-border"
                           />
                         ))}

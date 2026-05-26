@@ -19,7 +19,8 @@ import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import OAuthRedirect from "./pages/OAuthRedirect.tsx";
 import Voldel from "./pages/Voldel.tsx";
-import Camdel from "./pages/camdel.tsx";
+import Camdel from "./pages/Camdel.tsx";
+import Kyc from "./pages/Kyc.tsx";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/voldel/:id" element={<Voldel />} />
           <Route path="/camdel/:id" element={<Camdel />} />
 
+          <Route path="/kyc" element={<Kyc />} />
           <Route path="/volunteer/:id/chat" element={<VolunteerChat />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator-dashboard" element={<CreatorDashboard />} />

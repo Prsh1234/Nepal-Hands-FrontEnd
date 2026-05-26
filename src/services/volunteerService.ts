@@ -24,6 +24,24 @@ export interface VolunteerOpportunityRequest {
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
+  // Verification
+  orgLegalName: string;
+  orgType: string;
+  orgAddress: string;
+  regNumber: string;
+  regAuthority: string;
+  regDate?: string;
+  panNumber: string;
+  website?: string;
+
+  officialEmail: string;
+  officialPhone: string;
+
+  authorizedSignatory: string;
+  signatoryRole: string;
+
+
+  uploadedDocs: Record<string, File | null>;
 }
 export interface VolunteerOpportunityResponse {
     id: number;
@@ -52,6 +70,7 @@ export interface VolunteerOpportunityResponse {
     status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
     createdAt: string;
     updatedAt: string;
+
   }
 
 
@@ -89,6 +108,47 @@ export const createVolunteerOpportunity = async (data: VolunteerOpportunityReque
   data.images.forEach((file) => {
     formData.append("images", file);
   });
+
+
+  // Verification
+  formData.append("orgLegalName", data.orgLegalName);
+  formData.append("orgType", data.orgType);
+  formData.append("orgAddress", data.orgAddress);
+
+  formData.append("regNumber", data.regNumber);
+  formData.append("regAuthority", data.regAuthority);
+
+  if (data.regDate) {
+    formData.append("regDate", data.regDate);
+  }
+
+  formData.append("panNumber", data.panNumber);
+
+  if (data.website) {
+    formData.append("website", data.website);
+  }
+
+  formData.append("officialEmail", data.officialEmail);
+  formData.append("officialPhone", data.officialPhone);
+
+  formData.append(
+    "authorizedSignatory",
+    data.authorizedSignatory
+  );
+
+  formData.append(
+    "signatoryRole",
+    data.signatoryRole
+  );
+
+  Object.entries(data.uploadedDocs).forEach(
+    ([docType, file]) => {
+      if (file) {
+        formData.append("documents", file);
+        formData.append("documentTypes", docType);
+      }
+    }
+  );
 
   const { data: response } = await api.post(
     "/organizer/volunteer-opportunities",
