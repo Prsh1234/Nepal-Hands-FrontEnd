@@ -32,17 +32,16 @@ import {
 } from "lucide-react";
 
 import ImageModal from "@/modal/ImageModal";
+import { useState } from "react";
 
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedVolunteer: VolunteerRequest | null;
-    processingId: number | null;
+    processingVolunteerId: number | null;
     selectedImage: string | null;
     setSelectedImage: (value: string | null) => void;
     statusBadge: (status: string) => React.ReactNode;
-    handleApprove: (id: number) => void;
-    handleReject: (id: number) => void;
     handlePreview: (
         docId: number,
         fileName: string,
@@ -56,7 +55,7 @@ const VolunteerRequestModal = ({
     open,
     onOpenChange,
     selectedVolunteer,
-    processingId,
+    processingVolunteerId,
     selectedImage,
     setSelectedImage,
     statusBadge,
@@ -64,6 +63,7 @@ const VolunteerRequestModal = ({
     openRejectConfirm,
     handlePreview,
 }: Props) => {
+
     if (!selectedVolunteer) return null;
 
     return (
@@ -333,12 +333,12 @@ const VolunteerRequestModal = ({
                             <div className="flex gap-3 pt-2">
                                 <Button
                                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                                    disabled={processingId === selectedVolunteer.id}
+                                    disabled={processingVolunteerId === selectedVolunteer.id}
                                     onClick={() => {
                                         openApproveConfirm(selectedVolunteer.id);
                                     }}
                                 >
-                                    {processingId === selectedVolunteer.id ? (
+                                    {processingVolunteerId === selectedVolunteer.id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                         <CheckCircle className="h-4 w-4 mr-1" />
@@ -350,12 +350,12 @@ const VolunteerRequestModal = ({
                                 <Button
                                     variant="destructive"
                                     className="flex-1"
-                                    disabled={processingId === selectedVolunteer.id}
+                                    disabled={processingVolunteerId === selectedVolunteer.id}
                                     onClick={() => {
                                         openRejectConfirm(selectedVolunteer.id);
                                     }}
                                 >
-                                    {processingId === selectedVolunteer.id ? (
+                                    {processingVolunteerId === selectedVolunteer.id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                         <XCircle className="h-4 w-4 mr-1" />

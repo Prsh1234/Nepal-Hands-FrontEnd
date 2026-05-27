@@ -1,55 +1,8 @@
-// src/services/volunteerService.ts
+// src/services/adminService.ts
 import api from "@/lib/api";
-
-export interface VolunteerOpportunityResponse {
-    id: number;
-    title: string;
-    category: string;
-    location: string;
-    description: string;
-    longDescription: string;
-    linkedCampaignId: string | null;
-    requiredSkills: string[];
-    volunteerSpots: number;
-    minimumAge: number;
-    commitmentType: string;
-    requirements: string[];
-    activities: string[];     // backend splits newlines into list
-    whyItMatters: string;
-    benefits: string[];       // backend splits newlines into list
-    startDate: string;
-    endDate: string;
-    dailyHours: number;
-    coverImage?: string;
-    images: string[];
-    contactName: string;
-    contactEmail: string;
-    contactPhone: string | null;
-    status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
-    createdAt: string;
-    updatedAt: string;
-
-    verification?: {
-      orgLegalName: string;
-      orgType: string;
-      orgAddress: string;
-      regNumber: string;
-      regAuthority: string;
-      regDate?: string;
-      panNumber: string;
-      website?: string;
-      officialEmail: string;
-      officialPhone: string;
-      authorizedSignatory: string;
-      signatoryRole: string;
-    }
-  }
-
 
 
 export const getVolunteerOpportunities = async (params?: {
-    category?: string;
-    location?: string;
     page?: number;
     size?: number;
   }) => {
@@ -77,8 +30,6 @@ export const getVolunteerOpportunities = async (params?: {
 
 
   export const getCampaigns = async (params?: {
-    category?: string;
-    location?: string;
     page?: number;
     size?: number;
   }) => {
@@ -99,6 +50,34 @@ export const getVolunteerOpportunities = async (params?: {
       null,
       {
         params: { status },
+      }
+    );
+    return data;
+  };
+
+
+  export const getKycs = async (params?: {
+    status: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const { data } = await api.get("/admin/kyc", { params });
+    return data;
+  };
+
+  export const updateKycStatus = async (
+    id: string | number,
+    status: "APPROVED" | "REJECTED",
+    reason?: string
+  ) => {
+    const { data } = await api.patch(
+      `/admin/kyc/${id}/status`,
+      null,
+      {
+        params: {
+          status,
+          reason,
+        },
       }
     );
     return data;

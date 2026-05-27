@@ -1,0 +1,27 @@
+export type KycRecord = {
+    id: string;
+    userId: string;
+    fullName: string;
+    dateOfBirth: string;
+    gender: string;
+    citizenshipNumber: string;
+    citizenshipIssuedDistrict: string;
+    citizenshipIssuedDate: string;
+    panNumber: string | null;
+    phoneNumber: string;
+    email: string;
+    province: string;
+    district: string;
+    municipality: string;
+    wardNumber: string;
+    tole: string | null;
+    permanentAddress: string;
+    temporaryAddress: string | null;
+    occupation: string;
+    sourceOfFunds: string;
+    citizenshipFront: string;
+    citizenshipBack: string;
+    panDocument: string | null;
+    status: string;
+    createdAt: string;
+  };

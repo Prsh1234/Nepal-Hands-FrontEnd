@@ -8,30 +8,34 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+
 import { toast } from "sonner";
 import {
   Users, Heart, HandHelping, TrendingUp, Shield, AlertTriangle,
   CheckCircle, XCircle, Clock, Eye, Search, Ban, Flag, Loader2,
   DollarSign,
   Activity,
-  BarChart3
+  BarChart3,
+  BadgeCheck,
 } from "lucide-react";
 import {
   getVolunteerOpportunities,
   updateVolunteerStatus,
   getCampaigns,
   updateCampaignStatus,
+  getKycs,
+  updateKycStatus,
 } from "@/services/adminService";
 import api from "@/lib/api";
 import ImageModal from "@/modal/ImageModal";
 import VolunteerRequestModal from "@/modal/VolunteerRequestModal";
 import CampaignRequestModal from "@/modal/CampaignRequestModal";
+import KycDetailsModal from "@/modal/KycDetailsModal";
 import type { VolunteerRequest } from "@/types/volunteer";
 import ConfirmationModal from "@/modal/ConfirmationModal";
 import { CampaignRequest } from "@/types/campaign";
+import { KycRecord } from "@/types/kyc";
+
 // Mock data
 const platformStats = {
   totalUsers: 1247,
@@ -44,11 +48,6 @@ const platformStats = {
   conversionRate: 8.3,
 };
 
-const pendingCampaigns = [
-  { id: "c1", title: "Medical Aid for Humla", org: "Health Nepal", submittedDate: "2026-04-14", category: "Health", goalAmount: 750000, status: "pending" as const },
-  { id: "c2", title: "Library for Jumla Schools", org: "Read Nepal", submittedDate: "2026-04-13", category: "Education", goalAmount: 300000, status: "pending" as const },
-  { id: "c3", title: "Solar Panels for Mustang", org: "Green Energy Nepal", submittedDate: "2026-04-12", category: "Environment", goalAmount: 500000, status: "pending" as const },
-];
 
 
 
@@ -116,12 +115,19 @@ const AdminDashboard = () => {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
 
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [VolunteerdialogOpen, setVolunteerDialogOpen] = useState(false);
+  const [processingVolunteerId, setProcessingVolunteerId] = useState<number | null>(null);
   const [processingCampaignId, setProcessingCampaignId] = useState<number | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+
+  const [kycList, setKycList] = useState<KycRecord[]>([]);
+  const [loadingKyc, setLoadingKyc] = useState(true);
+  const [selectedKyc, setSelectedKyc] = useState<KycRecord | null>(null);
+  const [kycDialogOpen, setKycDialogOpen] = useState(false);
+  const [kycProcessingId, setKycProcessingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
   useEffect(() => {
 
     const fetchCampaigns = async () => {
@@ -157,7 +163,26 @@ const AdminDashboard = () => {
       setLoadingVolunteers(false);
     };
     fetchVolunteers();
+    const fetchKyc = async () => {
+      setLoadingKyc(true);
 
+      try {
+        const data = await getKycs({
+          status: "PENDING",
+          page: 0,
+          size: 10,
+        });
+
+        console.log(data);
+
+        setKycList(data?.content ?? []);
+      } catch (err: any) {
+        toast.error("Failed to load KYC requests: " + err.message);
+      }
+
+      setLoadingKyc(false);
+    };
+    fetchKyc();
 
 
   }, []);
@@ -198,8 +223,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApprove = async (id: number) => {
-    setProcessingId(id);
+  const handleVolunteerApprove = async (id: number) => {
+    setProcessingVolunteerId(id);
 
     try {
       await updateVolunteerStatus(id, "ACTIVE");
@@ -214,12 +239,12 @@ const AdminDashboard = () => {
     } catch (err: any) {
       toast.error("Failed to approve: " + err.message);
     } finally {
-      setProcessingId(null);
+      setProcessingVolunteerId(null);
     }
   };
 
-  const handleReject = async (id: number) => {
-    setProcessingId(id);
+  const handleVolunteerReject = async (id: number) => {
+    setProcessingVolunteerId(id);
 
     try {
       await updateVolunteerStatus(id, "REJECTED");
@@ -234,9 +259,66 @@ const AdminDashboard = () => {
     } catch (err: any) {
       toast.error("Failed to reject: " + err.message);
     } finally {
-      setProcessingId(null);
+      setProcessingVolunteerId(null);
     }
   };
+
+
+
+  const openKycDetails = async (k: KycRecord) => {
+    setSelectedKyc(k);
+    setKycDialogOpen(true);
+
+
+  };
+
+  const handleKycApprove = async (id: string) => {
+    setKycProcessingId(id);
+
+    try {
+      await updateKycStatus(id, "APPROVED"); // or APPROVED
+      toast.success("KYC approved");
+
+      setKycList((prev) =>
+        prev.map((k) =>
+          k.id === id ? { ...k, status: "ACTIVE" } : k
+        )
+      );
+    } catch (err: any) {
+      toast.error("Failed to approve KYC: " + err.message);
+    } finally {
+      setKycProcessingId(null);
+    }
+  };
+  const handleKycReject = async (id: string, reason: string) => {
+    if (!reason.trim()) {
+      toast.error("Rejection reason required");
+      return;
+    }
+
+    setKycProcessingId(id);
+
+    try {
+      await updateKycStatus(id, "REJECTED", reason);
+
+      toast.success("KYC rejected");
+
+      setKycList((prev) =>
+        prev.map((k) =>
+          k.id === id ? { ...k, status: "REJECTED" } : k
+        )
+      );
+    } catch (err: any) {
+      toast.error("Failed to reject KYC: " + err.message);
+    } finally {
+      setKycProcessingId(null);
+    }
+  };
+
+
+
+
+
 
   const previewDocument = async (
     endpoint: string,
@@ -247,31 +329,31 @@ const AdminDashboard = () => {
       const res = await api.get(endpoint, {
         responseType: "blob",
       });
-  
+
       const rawHeader = res.headers["content-type"];
-  
+
       const mime =
         typeof rawHeader === "string"
           ? rawHeader
           : Array.isArray(rawHeader)
             ? rawHeader[0]
             : contentType || "";
-  
+
       const blob = new Blob([res.data], { type: mime });
-  
+
       const url = window.URL.createObjectURL(blob);
-  
+
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
       }, 60000);
-  
+
       const ext = fileName.split(".").pop()?.toLowerCase();
-  
+
       if (mime.includes("pdf") || ext === "pdf") {
         window.open(url, "_blank");
         return;
       }
-  
+
       if (ext === "docx" || ext === "doc") {
         const a = document.createElement("a");
         a.href = url;
@@ -279,7 +361,7 @@ const AdminDashboard = () => {
         a.click();
         return;
       }
-  
+
       if (
         mime.startsWith("text/") ||
         ext === "txt" ||
@@ -289,18 +371,18 @@ const AdminDashboard = () => {
         window.open(url, "_blank");
         return;
       }
-  
+
       if (mime.startsWith("image/")) {
         const reader = new FileReader();
-  
+
         reader.onload = () => {
           setSelectedImage(reader.result as string);
         };
-  
+
         reader.readAsDataURL(blob);
         return;
       }
-  
+
       toast.error("Unsupported file type");
     } catch {
       toast.error("Failed to load document");
@@ -317,7 +399,7 @@ const AdminDashboard = () => {
       contentType
     );
   };
-  
+
   const handleVolunteerDocumentPreview = (
     docId: number,
     fileName: string,
@@ -329,16 +411,15 @@ const AdminDashboard = () => {
       contentType
     );
   };
-  const openDetails = (v: VolunteerRequest) => {
+  const openVolunteerDetails = (v: VolunteerRequest) => {
     setSelectedVolunteer(v);
-    setDialogOpen(true);
+    setVolunteerDialogOpen(true);
   };
   const openCampaignDetails = (c: CampaignRequest) => {
     setSelectedCampaign(c);
     setCampaignDialogOpen(true);
   };
-  type ConfirmType = "volunteer" | "campaign";
-
+  type ConfirmType = "volunteer" | "campaign" | "kyc";
   const [confirmType, setConfirmType] = useState<ConfirmType>("volunteer");
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -346,7 +427,7 @@ const AdminDashboard = () => {
 
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<number | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
-
+  const [selectedKycId, setSelectedKycId] = useState<string | null>(null);
 
   const openCampaignApproveConfirm = (id: number) => {
     setConfirmType("campaign");
@@ -363,19 +444,36 @@ const AdminDashboard = () => {
   };
 
 
-  const openApproveConfirm = (id: number) => {
+  const openVolunteerApproveConfirm = (id: number) => {
     setConfirmType("volunteer");
     setSelectedVolunteerId(id);
     setConfirmAction("approve");
     setConfirmOpen(true);
   };
 
-  const openRejectConfirm = (id: number) => {
+  const openVolunteerRejectConfirm = (id: number) => {
     setConfirmType("volunteer");
     setSelectedVolunteerId(id);
     setConfirmAction("reject");
     setConfirmOpen(true);
   };
+
+
+  const openKycApproveConfirm = (id: string) => {
+    setConfirmType("kyc");
+    setSelectedKycId(id);
+    setConfirmAction("approve");
+    setConfirmOpen(true);
+  };
+
+  const openKycRejectConfirm = (id: string) => {
+    setConfirmType("kyc");
+    setSelectedKycId(id);
+    setConfirmAction("reject");
+    setConfirmOpen(true);
+  };
+
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -442,8 +540,9 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="approvals" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="approvals" className="gap-1"><Clock className="h-4 w-4" /> Approvals</TabsTrigger>
+            <TabsTrigger value="kyc" className="gap-1"><BadgeCheck className="h-4 w-4" /> KYC</TabsTrigger>
             <TabsTrigger value="flagged" className="gap-1"><Flag className="h-4 w-4" /> Flagged</TabsTrigger>
             <TabsTrigger value="users" className="gap-1"><Users className="h-4 w-4" /> Users</TabsTrigger>
             <TabsTrigger value="transactions" className="gap-1"><BarChart3 className="h-4 w-4" /> Transactions</TabsTrigger>
@@ -457,56 +556,66 @@ const AdminDashboard = () => {
                 <CardDescription>Review and approve new campaign submissions</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Campaign</TableHead>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Goal (NPR)</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {campaigns.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.title}</TableCell>
-                        <TableCell>{c.organizer}</TableCell>
-                        <TableCell><Badge variant="outline">{c.category}</Badge></TableCell>
-                        <TableCell>{c.goal.toLocaleString()}</TableCell>
-                        <TableCell>{c.createdAt}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openCampaignDetails(c)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-
-                          {c.status === "PENDING_REVIEW" && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => openCampaignApproveConfirm(c.id)}                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => openCampaignRejectConfirm(c.id)}                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </TableCell>
+                {loadingCampaigns ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading campaign requests...
+                  </div>
+                ) : campaigns.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground text-sm">
+                    No campaign requests yet.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Campaign</TableHead>
+                        <TableHead>Organization</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Goal (NPR)</TableHead>
+                        <TableHead>Submitted</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {campaigns.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.title}</TableCell>
+                          <TableCell>{c.organizer}</TableCell>
+                          <TableCell><Badge variant="outline">{c.category}</Badge></TableCell>
+                          <TableCell>{c.goal.toLocaleString()}</TableCell>
+                          <TableCell>{c.createdAt}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openCampaignDetails(c)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            {c.status === "PENDING_REVIEW" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => openCampaignApproveConfirm(c.id)}                              >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => openCampaignRejectConfirm(c.id)}                              >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
 
@@ -545,19 +654,19 @@ const AdminDashboard = () => {
                           <TableCell>{v.volunteerSpots}</TableCell>
                           <TableCell>{statusBadge(v.status)}</TableCell>
                           <TableCell className="text-right space-x-2">
-                            <Button size="sm" variant="ghost" onClick={() => openDetails(v)}><Eye className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => openVolunteerDetails(v)}><Eye className="h-4 w-4" /></Button>
                             {v.status === "PENDING_REVIEW" && (
                               <>
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={processingId === v.id} onClick={() => openApproveConfirm(v.id)}>
-                                  {processingId === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={processingVolunteerId === v.id} onClick={() => openVolunteerApproveConfirm(v.id)}>
+                                  {processingVolunteerId === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  disabled={processingId === v.id}
-                                  onClick={() => openRejectConfirm(v.id)}
+                                  disabled={processingVolunteerId === v.id}
+                                  onClick={() => openVolunteerRejectConfirm(v.id)}
                                 >
-                                  {processingId === v.id ? (
+                                  {processingVolunteerId === v.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <XCircle className="h-4 w-4" />
@@ -574,6 +683,67 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+
+          {/* Kyc Tab */}
+          <TabsContent value="kyc">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">KYC Verifications</CardTitle>
+                <CardDescription>Review identity verification submissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingKyc ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading KYC submissions...
+                  </div>
+                ) : kycList.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground text-sm">No KYC submissions yet.</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Full Name</TableHead>
+                        <TableHead>Citizenship #</TableHead>
+                        <TableHead>District</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Submitted</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {kycList.map((k) => (
+                        <TableRow key={k.id}>
+                          <TableCell className="font-medium">{k.fullName}</TableCell>
+                          <TableCell className="text-sm">{k.citizenshipNumber}</TableCell>
+                          <TableCell className="text-sm">{k.district}</TableCell>
+                          <TableCell className="text-sm">{k.phoneNumber}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{new Date(k.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>{statusBadge(k.status)}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button size="sm" variant="ghost" onClick={() => openKycDetails(k)}><Eye className="h-4 w-4" /></Button>
+                            {k.status === "PENDING" && (
+                              <>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={kycProcessingId === k.id} onClick={() => openKycApproveConfirm(k.id)}>
+                                  {kycProcessingId === k.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                                </Button>
+                                <Button size="sm" variant="destructive" disabled={kycProcessingId === k.id} onClick={() => openKycDetails(k)}>
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+
 
           {/* Flagged Tab */}
           <TabsContent value="flagged">
@@ -701,17 +871,15 @@ const AdminDashboard = () => {
 
       {/* Volunteer Request Details Dialog */}
       <VolunteerRequestModal
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={VolunteerdialogOpen}
+        onOpenChange={setVolunteerDialogOpen}
         selectedVolunteer={selectedVolunteer}
-        processingId={processingId}
+        processingVolunteerId={processingVolunteerId}
         selectedImage={selectedImage}
         setSelectedImage={setSelectedImage}
-        handleApprove={handleApprove}
-        handleReject={handleReject}
         handlePreview={handleVolunteerDocumentPreview}
-        openApproveConfirm={openApproveConfirm}
-        openRejectConfirm={openRejectConfirm}
+        openApproveConfirm={openVolunteerApproveConfirm}
+        openRejectConfirm={openVolunteerRejectConfirm}
         statusBadge={statusBadge}
       />
       <CampaignRequestModal
@@ -727,24 +895,21 @@ const AdminDashboard = () => {
         openRejectConfirm={openCampaignRejectConfirm}
       />
 
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-2">
-          <DialogHeader>
-            <DialogTitle>Document Preview</DialogTitle>
-          </DialogHeader>
-
-          {previewUrl && (
-            <div className="w-full h-[75vh]">
-              {/* Try PDF/Image both */}
-              <object
-                data={previewUrl}
-                type="application/pdf"
-                className="w-full h-[75vh] border rounded-md"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <KycDetailsModal
+        open={kycDialogOpen}
+        onOpenChange={setKycDialogOpen}
+        selectedKyc={selectedKyc}
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+        statusBadge={statusBadge}
+        rejectReason={rejectReason}
+        setRejectReason={setRejectReason}
+        kycProcessingId={kycProcessingId}
+        handleKycApprove={handleKycApprove}
+        handleKycReject={handleKycReject}
+        openApproveConfirm={openKycApproveConfirm}
+        openRejectConfirm={openKycRejectConfirm}
+      />
       <ImageModal
         open={!!selectedImage}
         image={selectedImage}
@@ -754,14 +919,30 @@ const AdminDashboard = () => {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={
-          confirmAction === "approve"
-            ? "Approve Volunteer Request"
-            : "Reject Volunteer Request"
+          confirmType === "campaign"
+            ? confirmAction === "approve"
+              ? "Approve Campaign"
+              : "Reject Campaign"
+            : confirmType === "volunteer"
+            ? confirmAction === "approve"
+              ? "Approve Volunteer Request"
+              : "Reject Volunteer Request"
+            : confirmAction === "approve"
+            ? "Approve KYC"
+            : "Reject KYC"
         }
         description={
-          confirmAction === "approve"
-            ? "Are you sure you want to approve this volunteer request?"
-            : "Are you sure you want to reject this volunteer request?"
+          confirmType === "campaign"
+            ? confirmAction === "approve"
+              ? "Are you sure you want to approve this campaign?"
+              : "Are you sure you want to reject this campaign?"
+            : confirmType === "volunteer"
+            ? confirmAction === "approve"
+              ? "Are you sure you want to approve this volunteer request?"
+              : "Are you sure you want to reject this volunteer request?"
+            : confirmAction === "approve"
+            ? "Are you sure you want to approve this KYC verification?"
+            : "Are you sure you want to reject this KYC verification?"
         }
         confirmText={
           confirmAction === "approve"
@@ -775,33 +956,45 @@ const AdminDashboard = () => {
         }
         loading={
           confirmType === "volunteer"
-            ? processingId === selectedVolunteerId
-            : false
+            ? processingVolunteerId === selectedVolunteerId
+            : confirmType === "campaign"
+            ? processingCampaignId === selectedCampaignId
+            : kycProcessingId === selectedKycId
         }
         onConfirm={async () => {
           if (confirmType === "volunteer") {
             if (!selectedVolunteerId || !confirmAction) return;
-        
+
             if (confirmAction === "approve") {
-              await handleApprove(selectedVolunteerId);
+              await handleVolunteerApprove(selectedVolunteerId);
             } else {
-              await handleReject(selectedVolunteerId);
+              await handleVolunteerReject(selectedVolunteerId);
             }
           }
-        
+
           if (confirmType === "campaign") {
             if (!selectedCampaignId || !confirmAction) return;
-        
+
             if (confirmAction === "approve") {
               await handleCampaignApprove(selectedCampaignId);
             } else {
               await handleCampaignReject(selectedCampaignId);
             }
           }
-        
+          if (confirmType === "kyc") {
+            if (!selectedKycId || !confirmAction) return;
+          
+            if (confirmAction === "approve") {
+              await handleKycApprove(selectedKycId);
+            } else {
+              await handleKycReject(selectedKycId, rejectReason);
+            }
+          }
+
           setConfirmOpen(false);
         }}
       />
+
     </div>
   );
 };
