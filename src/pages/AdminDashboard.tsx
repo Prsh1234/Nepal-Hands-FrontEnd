@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,25 +8,30 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   Users, Heart, HandHelping, TrendingUp, Shield, AlertTriangle,
-  CheckCircle, XCircle, Clock, Eye, Search, Ban, Flag,
-  DollarSign, BarChart3, Activity, FileText, MapPin, Calendar,
-  Briefcase, Star, ListChecks, Sparkles, Phone, Mail, User,
-  Building2, BadgeCheck, FileCheck, Globe, Loader2
+  CheckCircle, XCircle, Clock, Eye, Search, Ban, Flag, Loader2,
+  DollarSign,
+  Activity,
+  BarChart3
 } from "lucide-react";
 import {
   getVolunteerOpportunities,
   updateVolunteerStatus,
+  getCampaigns,
+  updateCampaignStatus,
 } from "@/services/adminService";
 import api from "@/lib/api";
 import ImageModal from "@/modal/ImageModal";
+import VolunteerRequestModal from "@/modal/VolunteerRequestModal";
+import CampaignRequestModal from "@/modal/CampaignRequestModal";
+import type { VolunteerRequest } from "@/types/volunteer";
+import ConfirmationModal from "@/modal/ConfirmationModal";
+import { CampaignRequest } from "@/types/campaign";
 // Mock data
 const platformStats = {
   totalUsers: 1247,
@@ -46,65 +50,7 @@ const pendingCampaigns = [
   { id: "c3", title: "Solar Panels for Mustang", org: "Green Energy Nepal", submittedDate: "2026-04-12", category: "Environment", goalAmount: 500000, status: "pending" as const },
 ];
 
-type VolunteerRequest = {
-  id: number;
-  title: string;
-  category: string;
-  location: string;
-  description: string;
-  longDescription?: string;
 
-  requiredSkills: string[];
-  requirements: string[];
-
-  activities: string[];
-  benefits: string[];
-  whyItMatters: string;
-
-  volunteerSpots: number;
-  minimumAge: number;
-  commitmentType: string;
-
-  startDate: string;
-  endDate: string;
-  dailyHours: number;
-
-  images: string[];
-  coverImage: string;
-
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string | null;
-
-  postedById: number;
-  postedByName: string;
-
-  status: string;
-  createdAt: string;
-
-  verification: {
-    orgLegalName: string;
-    orgType: string;
-    orgAddress: string;
-    regNumber: string;
-    regAuthority: string;
-    regDate: string | null;
-    panNumber: string;
-    website: string | null;
-    officialEmail: string;
-    officialPhone: string | null;
-    authorizedSignatory: string;
-    signatoryRole: string;
-
-    documents: {
-      id: number;
-      documentType: string;
-      fileName: string;
-      file: string;
-      contentType: string;
-    }[];
-  };
-};
 
 const flaggedItems = [
   { id: "f1", type: "Campaign", title: "Suspicious Fundraiser XYZ", reason: "Unverified organization", reportedBy: 5, date: "2026-04-13" },
@@ -160,15 +106,38 @@ const statusBadge = (status: string) => {
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+
   const [volunteers, setVolunteers] = useState<VolunteerRequest[]>([]);
   const [loadingVolunteers, setLoadingVolunteers] = useState(true);
   const [selectedVolunteer, setSelectedVolunteer] = useState<VolunteerRequest | null>(null);
+
+  const [campaigns, setCampaigns] = useState<CampaignRequest[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignRequest | null>(null);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
+
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [processingCampaignId, setProcessingCampaignId] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   useEffect(() => {
+
+    const fetchCampaigns = async () => {
+      setLoadingCampaigns(true);
+      try {
+        const data = await getCampaigns();
+        const list = Array.isArray(data) ? data : data?.content ?? [];
+        setCampaigns(list);
+      } catch (err: any) {
+        toast.error("Failed to load campaigns: " + err.message);
+      }
+      setLoadingCampaigns(false);
+    };
+
+    fetchCampaigns();
+
     const fetchVolunteers = async () => {
       setLoadingVolunteers(true);
 
@@ -187,18 +156,56 @@ const AdminDashboard = () => {
 
       setLoadingVolunteers(false);
     };
-
     fetchVolunteers();
+
+
+
   }, []);
+  const handleCampaignApprove = async (id: number) => {
+    setProcessingCampaignId(id);
+
+    try {
+      await updateCampaignStatus(id, "ACTIVE");
+      toast.success("Campaign approved!");
+
+      setCampaigns((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, status: "ACTIVE" } : c
+        )
+      );
+    } catch (err: any) {
+      toast.error("Failed to approve campaign: " + err.message);
+    } finally {
+      setProcessingCampaignId(null);
+    }
+  };
+  const handleCampaignReject = async (id: number) => {
+    setProcessingCampaignId(id);
+
+    try {
+      await updateCampaignStatus(id, "REJECTED");
+      toast.success("Campaign rejected!");
+
+      setCampaigns((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, status: "REJECTED" } : c
+        )
+      );
+    } catch (err: any) {
+      toast.error("Failed to reject campaign: " + err.message);
+    } finally {
+      setProcessingCampaignId(null);
+    }
+  };
 
   const handleApprove = async (id: number) => {
     setProcessingId(id);
-  
+
     try {
       await updateVolunteerStatus(id, "ACTIVE");
-  
+
       toast.success("Volunteer request approved!");
-  
+
       setVolunteers((prev) =>
         prev.map((v) =>
           v.id === id ? { ...v, status: "ACTIVE" } : v
@@ -213,12 +220,12 @@ const AdminDashboard = () => {
 
   const handleReject = async (id: number) => {
     setProcessingId(id);
-  
+
     try {
       await updateVolunteerStatus(id, "REJECTED");
-  
+
       toast.success("Volunteer request rejected.");
-  
+
       setVolunteers((prev) =>
         prev.map((v) =>
           v.id === id ? { ...v, status: "REJECTED" } : v
@@ -230,41 +237,41 @@ const AdminDashboard = () => {
       setProcessingId(null);
     }
   };
-  const handlePreview = async (
-    docId: number,
+
+  const previewDocument = async (
+    endpoint: string,
     fileName: string,
     contentType?: string
   ) => {
     try {
-      const res = await api.get(
-        `/admin/volunteer-opportunities/documents/${docId}`,
-        { responseType: "blob" }
-      );
-
+      const res = await api.get(endpoint, {
+        responseType: "blob",
+      });
+  
       const rawHeader = res.headers["content-type"];
-
+  
       const mime =
         typeof rawHeader === "string"
           ? rawHeader
           : Array.isArray(rawHeader)
             ? rawHeader[0]
             : contentType || "";
-
+  
       const blob = new Blob([res.data], { type: mime });
-
+  
       const url = window.URL.createObjectURL(blob);
+  
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-      }, 60_000);
+      }, 60000);
+  
       const ext = fileName.split(".").pop()?.toLowerCase();
-
-      // 📄 PDF → open in new tab
+  
       if (mime.includes("pdf") || ext === "pdf") {
         window.open(url, "_blank");
         return;
       }
-
-      // 🧾 DOCX / DOC → download
+  
       if (ext === "docx" || ext === "doc") {
         const a = document.createElement("a");
         a.href = url;
@@ -272,39 +279,103 @@ const AdminDashboard = () => {
         a.click();
         return;
       }
-
-      // 📝 TXT / CSV / JSON → open as text
+  
       if (
         mime.startsWith("text/") ||
         ext === "txt" ||
         ext === "csv" ||
         ext === "json"
       ) {
-        const textUrl = url;
-        window.open(textUrl, "_blank");
+        window.open(url, "_blank");
         return;
       }
-
-      // 🖼 IMAGE → modal preview
+  
       if (mime.startsWith("image/")) {
         const reader = new FileReader();
+  
         reader.onload = () => {
           setSelectedImage(reader.result as string);
         };
+  
         reader.readAsDataURL(blob);
         return;
       }
-
+  
       toast.error("Unsupported file type");
-    } catch (err) {
+    } catch {
       toast.error("Failed to load document");
     }
+  };
+  const handleCampaignDocumentPreview = (
+    docId: number,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/admin/campaign/documents/${docId}`,
+      fileName,
+      contentType
+    );
+  };
+  
+  const handleVolunteerDocumentPreview = (
+    docId: number,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/admin/volunteer-opportunities/documents/${docId}`,
+      fileName,
+      contentType
+    );
   };
   const openDetails = (v: VolunteerRequest) => {
     setSelectedVolunteer(v);
     setDialogOpen(true);
   };
+  const openCampaignDetails = (c: CampaignRequest) => {
+    setSelectedCampaign(c);
+    setCampaignDialogOpen(true);
+  };
+  type ConfirmType = "volunteer" | "campaign";
 
+  const [confirmType, setConfirmType] = useState<ConfirmType>("volunteer");
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
+
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState<number | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+
+
+  const openCampaignApproveConfirm = (id: number) => {
+    setConfirmType("campaign");
+    setSelectedCampaignId(id);
+    setConfirmAction("approve");
+    setConfirmOpen(true);
+  };
+
+  const openCampaignRejectConfirm = (id: number) => {
+    setConfirmType("campaign");
+    setSelectedCampaignId(id);
+    setConfirmAction("reject");
+    setConfirmOpen(true);
+  };
+
+
+  const openApproveConfirm = (id: number) => {
+    setConfirmType("volunteer");
+    setSelectedVolunteerId(id);
+    setConfirmAction("approve");
+    setConfirmOpen(true);
+  };
+
+  const openRejectConfirm = (id: number) => {
+    setConfirmType("volunteer");
+    setSelectedVolunteerId(id);
+    setConfirmAction("reject");
+    setConfirmOpen(true);
+  };
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -398,17 +469,39 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pendingCampaigns.map((c) => (
+                    {campaigns.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">{c.title}</TableCell>
-                        <TableCell>{c.org}</TableCell>
+                        <TableCell>{c.organizer}</TableCell>
                         <TableCell><Badge variant="outline">{c.category}</Badge></TableCell>
-                        <TableCell>{c.goalAmount.toLocaleString()}</TableCell>
-                        <TableCell>{c.submittedDate}</TableCell>
+                        <TableCell>{c.goal.toLocaleString()}</TableCell>
+                        <TableCell>{c.createdAt}</TableCell>
                         <TableCell className="text-right space-x-2">
-                          <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"><CheckCircle className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="destructive"><XCircle className="h-4 w-4" /></Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openCampaignDetails(c)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+
+                          {c.status === "PENDING_REVIEW" && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => openCampaignApproveConfirm(c.id)}                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => openCampaignRejectConfirm(c.id)}                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -455,11 +548,20 @@ const AdminDashboard = () => {
                             <Button size="sm" variant="ghost" onClick={() => openDetails(v)}><Eye className="h-4 w-4" /></Button>
                             {v.status === "PENDING_REVIEW" && (
                               <>
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={processingId === v.id} onClick={() => handleApprove(v.id)}>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={processingId === v.id} onClick={() => openApproveConfirm(v.id)}>
                                   {processingId === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                                 </Button>
-                                <Button size="sm" variant="destructive" disabled={processingId === v.id} onClick={() => handleReject(v.id)}>
-                                  {processingId === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={processingId === v.id}
+                                  onClick={() => openRejectConfirm(v.id)}
+                                >
+                                  {processingId === v.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </>
                             )}
@@ -598,259 +700,33 @@ const AdminDashboard = () => {
       <Footer />
 
       {/* Volunteer Request Details Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-heading">Volunteer Request Details</DialogTitle>
-            <DialogDescription>
-              Full review data for this volunteer opportunity submission.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedVolunteer && (
-            <div className="space-y-6 text-sm">
-              {/* Status */}
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Status:</span>
-                {statusBadge(selectedVolunteer.status)}
-              </div>
+      <VolunteerRequestModal
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        selectedVolunteer={selectedVolunteer}
+        processingId={processingId}
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+        handleApprove={handleApprove}
+        handleReject={handleReject}
+        handlePreview={handleVolunteerDocumentPreview}
+        openApproveConfirm={openApproveConfirm}
+        openRejectConfirm={openRejectConfirm}
+        statusBadge={statusBadge}
+      />
+      <CampaignRequestModal
+        open={campaignDialogOpen}
+        onOpenChange={setCampaignDialogOpen}
+        selectedCampaign={selectedCampaign}
+        processingCampaignId={processingCampaignId}
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+        statusBadge={statusBadge}
+        handlePreview={handleCampaignDocumentPreview}
+        openApproveConfirm={openCampaignApproveConfirm}
+        openRejectConfirm={openCampaignRejectConfirm}
+      />
 
-              {/* Basic Info */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" /> Opportunity
-                </h4>
-                <p className="font-medium text-lg">{selectedVolunteer.title}</p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">{selectedVolunteer.category}</Badge>
-                  <span className="flex items-center gap-1 text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                    <MapPin className="h-3 w-3" /> {selectedVolunteer.location}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                    <Users className="h-3 w-3" /> {selectedVolunteer.volunteerSpots} spots
-                  </span>
-                </div>
-                <h4 className="font-semibold text-foreground">Description</h4>
-                <p className="text-muted-foreground leading-relaxed">{selectedVolunteer.description}</p>
-                <h4 className="font-semibold text-foreground">Long description</h4>
-                <p className="text-muted-foreground leading-relaxed">{selectedVolunteer.longDescription}</p>
-              </div>
-
-              <Separator />
-
-              {/* Schedule */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-muted-foreground flex items-center gap-1 mb-1">
-                    <Calendar className="h-3 w-3" /> Dates
-                  </p>
-                  <p className="font-medium text-foreground">
-                    {selectedVolunteer.startDate} — {selectedVolunteer.endDate}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground flex items-center gap-1 mb-1">
-                    <Clock className="h-3 w-3" /> Daily Hours
-                  </p>
-                  <p className="font-medium text-foreground">{selectedVolunteer.dailyHours} hrs/day</p>
-                </div>
-              </div>
-
-              {/* Skills & Requirements */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground">Requirements</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedVolunteer.requiredSkills?.map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-                  ))}
-                </div>
-                <p className="text-muted-foreground">Min age: {selectedVolunteer.minimumAge}</p>
-                <p className="text-muted-foreground"> Commitment: {selectedVolunteer.commitmentType}</p>
-                <h4 className="font-semibold text-foreground"> Additional Requirements:</h4>
-                {selectedVolunteer.requirements && (
-                  <p className="text-muted-foreground">{selectedVolunteer.requirements?.map((req, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
-                    >
-                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                        {i + 1}
-                      </span>
-
-                      <span className="text-sm text-foreground">{req}</span>
-                    </div>
-                  ))}</p>
-                )}
-              </div>
-
-              {/* Activities, Impact, Benefits */}
-              {selectedVolunteer.activities && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> What Volunteers Will Do
-                  </h4>
-                  <ul className="space-y-1 list-disc pl-5 text-muted-foreground">
-                    {selectedVolunteer.activities?.filter(item => item.trim() !== "")
-                      .map((item, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2 text-muted-foreground"
-                        >
-                          <CheckCircle
-                            size={14}
-                            className="text-primary mt-1 shrink-0"
-                          />
-
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-              {selectedVolunteer.whyItMatters && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" /> Why This Matters
-                  </h4>
-                  <p className="text-muted-foreground whitespace-pre-line">{selectedVolunteer.whyItMatters}</p>
-                </div>
-              )}
-              {selectedVolunteer.benefits && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2">
-                    <Star className="h-4 w-4 text-primary" /> What Volunteers Get
-                  </h4>
-                  <ul className="space-y-1 list-disc pl-5 text-muted-foreground">
-                    {selectedVolunteer.benefits.map((benefit, i) => (
-                      <div key={i} className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
-                        <CheckCircle size={14} className="text-primary mt-0.5 shrink-0" />
-                        <span className="text-sm text-foreground">{benefit}</span>
-                      </div>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {selectedVolunteer.coverImage && (
-                <img
-                  src={`data:image/jpeg;base64,${selectedVolunteer.coverImage}`}
-                  className="w-full h-60 object-cover rounded-lg"
-                />
-              )}
-              {selectedVolunteer.images?.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-3">
-                    Photos
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedVolunteer.images.slice(0, 4).map((src, i) => (
-                      <motion.img
-                        key={i}
-                        src={`data:image/jpeg;base64,${src}`}
-                        alt={`${selectedVolunteer.title} photo ${i + 1}`}
-                        loading="lazy"
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.08 }}
-                        onClick={() => setSelectedImage(`data:image/jpeg;base64,${src}`)}
-                        className="w-full h-40 sm:h-48 object-cover rounded-lg border border-border"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              <Separator />
-
-              {/* Contact */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" /> Contact Information
-                </h4>
-                <p className="font-medium text-foreground">{selectedVolunteer.contactName}</p>
-                <div className="flex flex-wrap gap-3 text-muted-foreground">
-                  <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedVolunteer.contactEmail}</span>
-                  {selectedVolunteer.contactPhone && (
-                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {selectedVolunteer.contactPhone}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Organization Verification */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" /> Organization Verification
-                </h4>
-                <p className="font-medium text-foreground">Organization Name:{selectedVolunteer.verification.orgLegalName}</p>
-                <p className="text-muted-foreground">
-                  Org type:{selectedVolunteer.verification.orgType}
-                </p>
-                <p className="text-muted-foreground">
-                  Registraion Number: {selectedVolunteer.verification.regNumber}
-                </p>
-                <p className="text-muted-foreground">
-                  Authority: {selectedVolunteer.verification.regAuthority}
-                </p>
-                {selectedVolunteer.verification.regDate && (
-                  <p className="text-muted-foreground">Registered: {selectedVolunteer.verification.regDate}</p>
-                )}
-                <p className="text-muted-foreground">PAN: {selectedVolunteer.verification.panNumber}</p>
-                {selectedVolunteer.verification.website && (
-                  <p className="text-muted-foreground flex items-center gap-1">
-                    <Globe className="h-3 w-3" /> {selectedVolunteer.verification.website}
-                  </p>
-                )}
-                <p className="text-muted-foreground">
-                  Signatory: {selectedVolunteer.verification.authorizedSignatory} ({selectedVolunteer.verification.signatoryRole})
-                </p>
-                {selectedVolunteer.verification.documents?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {selectedVolunteer.verification.documents.map((doc) => (
-                      <button
-                        key={doc.id}
-                        onClick={() =>
-                          handlePreview(doc.id, doc.fileName, doc.contentType)
-                        }
-                        className="text-[11px] bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1 hover:bg-primary/20"
-                      >
-                        <FileCheck className="h-3 w-3" />
-                        {doc.fileName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Submitted info */}
-              <div className="pt-2 text-xs text-muted-foreground">
-                Submitted on {new Date(selectedVolunteer.createdAt).toLocaleDateString()} by {selectedVolunteer.postedByName}.
-              </div>
-
-              {/* Actions */}
-              {selectedVolunteer.status === "PENDING_REVIEW" && (
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    disabled={processingId === selectedVolunteer.id}
-                    onClick={() => { handleApprove(selectedVolunteer.id); setDialogOpen(false); }}
-                  >
-                    {processingId === selectedVolunteer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    disabled={processingId === selectedVolunteer.id}
-                    onClick={() => { handleReject(selectedVolunteer.id); setDialogOpen(false); }}
-                  >
-                    {processingId === selectedVolunteer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
-                    Reject
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-2">
           <DialogHeader>
@@ -873,6 +749,58 @@ const AdminDashboard = () => {
         open={!!selectedImage}
         image={selectedImage}
         onClose={() => setSelectedImage(null)}
+      />
+      <ConfirmationModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={
+          confirmAction === "approve"
+            ? "Approve Volunteer Request"
+            : "Reject Volunteer Request"
+        }
+        description={
+          confirmAction === "approve"
+            ? "Are you sure you want to approve this volunteer request?"
+            : "Are you sure you want to reject this volunteer request?"
+        }
+        confirmText={
+          confirmAction === "approve"
+            ? "Approve"
+            : "Reject"
+        }
+        variant={
+          confirmAction === "reject"
+            ? "destructive"
+            : "default"
+        }
+        loading={
+          confirmType === "volunteer"
+            ? processingId === selectedVolunteerId
+            : false
+        }
+        onConfirm={async () => {
+          if (confirmType === "volunteer") {
+            if (!selectedVolunteerId || !confirmAction) return;
+        
+            if (confirmAction === "approve") {
+              await handleApprove(selectedVolunteerId);
+            } else {
+              await handleReject(selectedVolunteerId);
+            }
+          }
+        
+          if (confirmType === "campaign") {
+            if (!selectedCampaignId || !confirmAction) return;
+        
+            if (confirmAction === "approve") {
+              await handleCampaignApprove(selectedCampaignId);
+            } else {
+              await handleCampaignReject(selectedCampaignId);
+            }
+          }
+        
+          setConfirmOpen(false);
+        }}
       />
     </div>
   );

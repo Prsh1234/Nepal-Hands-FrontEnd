@@ -74,3 +74,32 @@ export const getVolunteerOpportunities = async (params?: {
     );
     return data;
   };
+
+
+  export const getCampaigns = async (params?: {
+    category?: string;
+    location?: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const { data } = await api.get("/admin/campaign", { params });
+    return data;
+  };
+  
+  // Public — no auth needed, fetches a single ACTIVE opportunity by id
+
+  
+
+  export const updateCampaignStatus = async (
+    id: string | number,
+    status: "ACTIVE" | "REJECTED"
+  ) => {
+    const { data } = await api.patch(
+      `/admin/campaign/${id}/status`,
+      null,
+      {
+        params: { status },
+      }
+    );
+    return data;
+  };

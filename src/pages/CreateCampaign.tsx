@@ -15,6 +15,8 @@ import {
   ListChecks,
   Shield,
   Calendar,
+  BadgeCheck,
+  LinkIcon,
 } from "lucide-react";
 import { createCampaign } from "@/services/campaignService";
 
@@ -27,7 +29,7 @@ const CATEGORIES = [
   { id: "empowerment", label: "Empowerment", icon: Users },
 ];
 
-const STEPS = ["Basics", "Story", "Goal", "Media", "Schedule", "Review"];
+const STEPS = ["Basics", "Story", "Goal", "Media", "Schedule", "Verification", "Review"];
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
@@ -58,6 +60,105 @@ const CreateCampaign = () => {
   const progress = ((step + 1) / STEPS.length) * 100;
   const goalNumber = Number(goal);
   const hasGoal = goal.trim() !== "";
+
+  // Step 4: Verification
+  const [orgLegalName, setOrgLegalName] = useState("");
+  const [orgType, setOrgType] = useState("");
+  const [regNumber, setRegNumber] = useState("");
+  const [regAuthority, setRegAuthority] = useState("");
+  const [regDate, setRegDate] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [website, setWebsite] = useState("");
+  const [authorizedSignatory, setAuthorizedSignatory] = useState("");
+  const [signatoryRole, setSignatoryRole] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankAccountHolderName, setBankAccountHolderName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, File | null>>({});
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  const handleDocumentUpload = (
+    docId: string,
+    file: File | null
+  ) => {
+    setUploadedDocs((prev) => ({
+      ...prev,
+      [docId]: file,
+    }));
+  };
+
+  const removeDocument = (docId: string) => {
+    setUploadedDocs((prev) => ({
+      ...prev,
+      [docId]: null,
+    }));
+  };
+  const ORG_TYPES = [
+    { id: "ngo", label: "NGO" },
+    { id: "ingo", label: "INGO" },
+    { id: "cso", label: "Community-Based Org" },
+    { id: "company", label: "Pvt. Ltd / Company" },
+    { id: "cooperative", label: "Cooperative" },
+    { id: "individual", label: "Individual / Group" },
+  ];
+  const DOCUMENT_TYPES = [
+    {
+      id: "Registration Certificate",
+      label: "Registration Certificate",
+      required: true,
+      hint: "Issued by DAO / Company Registrar / Cooperative Dept."
+    },
+    {
+      id: "PAN / VAT Certificate",
+      label: "PAN / VAT Certificate",
+      required: true,
+      hint: "Issued by Inland Revenue Department."
+    },
+    {
+      id: "SWC Affiliation Certificate",
+      label: "SWC Affiliation Certificate",
+      required: false,
+      conditional: ["ngo", "ingo"],
+      hint: "Required for NGOs/INGOs receiving foreign aid."
+    },
+    {
+      id: "Tax Clearance Certificate",
+      label: "Tax Clearance Certificate",
+      required: false,
+      hint: "Most recent fiscal year."
+    },
+    {
+      id: "Audit Report",
+      label: "Audit Report",
+      required: false,
+      hint: "Latest annual audited financial statement."
+    },
+    {
+      id: "Bank Account Verification",
+      label: "Bank Account Verification",
+      required: true,
+      hint: "Bank letter or cancelled cheque for the campaign account."
+    },
+    {
+      id: "Constitution / MoA & AoA",
+      label: "Constitution / MoA & AoA",
+      required
+        : false,
+      hint: "Governing document of the organization."
+    },
+    {
+      id: "Local Body Permission Letter",
+      label: "Local Body Permission Letter",
+      required: false,
+      hint: "From Municipality / Ward where project occurs."
+    },
+    {
+      id: "Project Proposal / Budget",
+      label: "Project Proposal / Budget",
+      required: false,
+      hint: "Detailed breakdown of how funds will be used."
+    },
+  ];
+
   const canProceed = () => {
     switch (step) {
       case 0:
@@ -71,6 +172,31 @@ const CreateCampaign = () => {
       case 4:
         return startDate && endDate && contactName.trim() && contactEmail.trim();
       case 5:
+        const requiredDocsUploaded = DOCUMENT_TYPES.every((doc) => {
+          const isConditionallyRequired =
+            doc.conditional?.includes(orgType);
+
+          const isRequired =
+            doc.required || isConditionallyRequired;
+
+          return !isRequired || uploadedDocs[doc.id];
+        });
+
+        return (
+          orgLegalName.trim() &&
+          orgType &&
+          regNumber.trim() &&
+          regAuthority.trim() &&
+          panNumber.trim() &&
+          authorizedSignatory.trim() &&
+          signatoryRole.trim() &&
+          requiredDocsUploaded &&
+          declarationAccepted &&
+          bankName.trim() &&
+          bankAccountHolderName.trim() &&
+          bankAccountNumber.trim()
+        );
+      case 6:
         return true;
       default:
         return false;
@@ -141,6 +267,21 @@ const CreateCampaign = () => {
         contactPhone: contactPhone || null,
         coverImage: coverImageFile,
         images: galleryImageFiles,
+        //verification
+        website,
+        orgLegalName,
+        orgType,
+        regNumber,
+        regAuthority,
+        regDate,
+        panNumber,
+        bankName,
+        bankAccountHolderName,
+        bankAccountNumber,
+        authorizedSignatory,
+        signatoryRole,
+        uploadedDocs,
+        
       });
       toast.success("Volunteer request submitted! We'll review it within 24 hours.");
       navigate("/");
@@ -547,8 +688,291 @@ const CreateCampaign = () => {
                 </>
               )}
 
-              {/* Step 5: Review */}
+
+              {/* Step 5: Verification / Proof of Authenticity */}
               {step === 5 && (
+                <>
+                  <div className="rounded-2xl border border-border bg-accent/30 p-4 flex gap-3">
+                    <BadgeCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-semibold text-foreground">Proof of Authenticity</p>
+                      <p className="text-muted-foreground mt-0.5">
+                        Verified campaigns earn donor trust. Provide your organization
+                        details, registration documents, and bank verification so our
+                        team can review your campaign.
+                      </p>
+                    </div>
+                  </div>
+                  {/* Organization legal details */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Organization Details
+                    </h3>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Legal Organization Name *
+                      </label>
+                      <Input
+                        placeholder="As registered with the authority"
+                        value={orgLegalName}
+                        onChange={(e) => setOrgLegalName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Organization Type *
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {ORG_TYPES.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => setOrgType(t.id)}
+                            className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${orgType === t.id
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-border hover:border-primary/40 text-foreground"
+                              }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Registration Number *
+                        </label>
+                        <Input
+                          placeholder="e.g. 12345/078"
+                          value={regNumber}
+                          onChange={(e) => setRegNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Registration Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={regDate}
+                          onChange={(e) => setRegDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Registering Authority *
+                      </label>
+                      <Input
+                        placeholder="e.g. District Administration Office, Kathmandu"
+                        value={regAuthority}
+                        onChange={(e) => setRegAuthority(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        PAN / VAT Number *
+                      </label>
+                      <Input
+                        placeholder="9-digit PAN"
+                        value={panNumber}
+                        onChange={(e) => setPanNumber(e.target.value)}
+                        maxLength={9}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Website / Social Page
+                      </label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="https://"
+                          value={website}
+                          onChange={(e) => setWebsite(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Authorized signatory */}
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Authorized Signatory
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Full Name *
+                        </label>
+                        <Input
+                          placeholder="Full legal name"
+                          value={authorizedSignatory}
+                          onChange={(e) => setAuthorizedSignatory(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Role / Designation *
+                        </label>
+                        <Input
+                          placeholder="e.g. Chairperson"
+                          value={signatoryRole}
+                          onChange={(e) => setSignatoryRole(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Bank details */}
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Campaign Bank Account
+                    </h3>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                      All disbursements will be made to this account after verification.
+                    </p>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Bank Name *
+                      </label>
+                      <Input
+                        placeholder="e.g. Nabil Bank Ltd."
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Account Holder *
+                        </label>
+                        <Input
+                          placeholder="As per bank record"
+                          value={bankAccountHolderName}
+                          onChange={(e) => setBankAccountHolderName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Account Number *
+                        </label>
+                        <Input
+                          placeholder="Account no."
+                          value={bankAccountNumber}
+                          onChange={(e) => setBankAccountNumber(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Document uploads */}
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Supporting Documents
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload clear PDF / image scans. Required documents are marked.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {DOCUMENT_TYPES
+                        .filter((doc) => {
+                          if (!doc.conditional) return true;
+
+                          return doc.conditional.includes(orgType);
+                        })
+                        .map((doc) => {
+                          const uploaded = Boolean(uploadedDocs[doc.id]);
+                          return (
+                            <div
+                              key={doc.id}
+                              className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${uploaded
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border"
+                                }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-medium text-foreground">
+                                    {doc.label}
+                                  </span>
+                                  {doc.required || doc.conditional?.includes(orgType) ? (
+                                    <span className="text-[10px] font-semibold bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
+                                      Required
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                                      Optional
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {doc.hint}
+                                </p>
+                                {uploaded && (
+                                  <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> {uploadedDocs[doc.id]?.name}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="shrink-0">
+                                {uploaded ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDocument(doc.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    Remove
+                                  </button>
+                                ) : (
+                                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer">
+                                    <Upload className="w-3 h-3" />
+                                    Upload
+
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      hidden
+                                      onChange={(e) =>
+                                        handleDocumentUpload(
+                                          doc.id,
+                                          e.target.files?.[0] || null
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                  {/* Declaration */}
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={declarationAccepted}
+                        onChange={(e) => setDeclarationAccepted(e.target.checked)}
+                        className="mt-1 w-4 h-4 accent-primary cursor-pointer"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        I declare that all information and documents submitted are
+                        true, authentic, and legally obtained. I understand that
+                        misrepresentation may result in suspension of the campaign,
+                        return of funds, and legal action under Nepal's prevailing laws.
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+
+
+              {/* Step 5: Review */}
+              {step === 6 && (
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                     <h3 className="font-playfair text-xl font-bold text-foreground">{title}</h3>
