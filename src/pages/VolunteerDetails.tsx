@@ -18,19 +18,9 @@ import { useParams, Link } from "react-router-dom";
 import { getVolunteerOpportunityById, VolunteerOpportunityResponse } from "@/services/volunteerService";
 import { Loader2 } from "lucide-react";
 import ImageModal from "@/modal/ImageModal";
-
-
-
-
-
-
-
-
-
-
-
-
-
+import { formatDateTime } from "@/lib/utils";
+import { applyForVolunteer, getApplicationStatus, getUserData } from "@/services/userService";
+import { toast } from "sonner";
 
 
 
@@ -40,15 +30,71 @@ const VolunteerDetails = () => {
   const [opportunity, setOpportunity] = useState<VolunteerOpportunityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-
+  const [submitting, setSubmitting] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState("");
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    getVolunteerOpportunityById(id)
-      .then(setOpportunity)
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [opportunityData, userData, applicationStatus] = await Promise.all([
+          getVolunteerOpportunityById(id),
+          getUserData(),
+          getApplicationStatus(id),
+        ]);
+
+        setOpportunity(opportunityData);
+        setApplicantEmail(userData.email);
+        setApplicantName(userData.firstName + " " + userData.lastName);
+        setApplicationStatus(applicationStatus);
+
+        console.log(applicationStatus);
+
+
+      } catch (error) {
+        console.error(error);
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
+  const handleSubmit = async () => {
+    if (!applicantPhone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
+
+    if (!applicantMessage.trim()) {
+      toast.error("Please provide your motivation");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await applyForVolunteer(Number(id), {
+        phone: applicantPhone,
+        motivation: applicantMessage,
+      });
+
+      toast.success(response.message);
+      setApplicationStatus("PENDING");
+      setApplicantPhone("");
+      setApplicantMessage("");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+        "Failed to submit application"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+
+
+  };
 
   const [applicantName, setApplicantName] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
@@ -147,7 +193,7 @@ const VolunteerDetails = () => {
                 <TabsTrigger value="requirements">Requirements</TabsTrigger>
                 {/* <TabsTrigger value="team">Team ({opportunity.volunteers.length})</TabsTrigger> */}
                 <TabsTrigger value="team">Team </TabsTrigger>
-                <TabsTrigger value="updates">Updates</TabsTrigger>
+                <TabsTrigger value="updates">Updates({opportunity.updates?.length || 0})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="about">
@@ -300,7 +346,33 @@ const VolunteerDetails = () => {
               </TabsContent>
 
 
+
+              {/* Updates */}
+              <TabsContent value="updates">
+                <div className="mt-4 space-y-0">
+                  {opportunity.updates.map((update, i) => (
+                    <motion.div key={i}
+                      initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                      className="relative pl-8 pb-8 last:pb-0">
+                      {i < opportunity.updates.length - 1 && (
+                        <div className="absolute left-[11px] top-8 w-0.5 h-full bg-border" />
+                      )}
+                      <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-card border-2 border-primary flex items-center justify-center">
+                        <CheckCircle size={12} className="text-primary" />
+                      </div>
+                      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+                        <span className="text-xs text-muted-foreground">{formatDateTime(update.date)}</span>
+                        <h4 className="font-display font-semibold text-foreground mb-1">{update.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{update.body}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </TabsContent>
             </Tabs>
+
+
           </div>
 
           {/* Right Column */}
@@ -316,30 +388,119 @@ const VolunteerDetails = () => {
                 <h3 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                   <UserPlus size={20} className="text-primary" /> Apply to Volunteer
                 </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Full Name *</label>
-                    <Input placeholder="Your full name" value={applicantName} onChange={(e) => setApplicantName(e.target.value)} />
+                {applicationStatus === "NOT_APPLIED" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1 block">
+                        Full Name *
+                      </label>
+                      <Input
+                        value={applicantName}
+                        readOnly
+                        className="bg-muted cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1 block">
+                        Email *
+                      </label>
+                      <Input
+                        type="email"
+                        value={applicantEmail}
+                        readOnly
+                        className="bg-muted cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1 block">
+                        Phone
+                      </label>
+                      <Input
+                        type="tel"
+                        placeholder="+977-..."
+                        value={applicantPhone}
+                        disabled={submitting}
+                        onChange={(e) => setApplicantPhone(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1 block">
+                        Why do you want to volunteer?
+                      </label>
+                      <Textarea
+                        placeholder="Share your motivation..."
+                        value={applicantMessage}
+                        disabled={submitting}
+                        onChange={(e) => setApplicantMessage(e.target.value)}
+                        rows={4}
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      className="w-full gap-2 text-base h-12"
+                      size="lg"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Heart size={18} />
+                          Submit Application
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Email *</label>
-                    <Input type="email" placeholder="your@email.com" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} />
+                ) : (
+                  <div className="rounded-xl border p-6 text-center">
+                    {applicationStatus === "PENDING" && (
+                      <>
+                        <Clock className="mx-auto mb-3 text-yellow-500" size={40} />
+                        <h4 className="font-semibold text-lg">Application Pending</h4>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Your application is currently under review.
+                        </p>
+                      </>
+                    )}
+
+                    {applicationStatus === "APPROVED" && (
+                      <>
+                        <CheckCircle className="mx-auto mb-3 text-green-500" size={40} />
+                        <h4 className="font-semibold text-lg">Application Approved</h4>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Congratulations! Your application has been approved.
+                        </p>
+                      </>
+                    )}
+
+                    {applicationStatus === "REJECTED" && (
+                      <>
+                        <AlertTriangle className="mx-auto mb-3 text-red-500" size={40} />
+                        <h4 className="font-semibold text-lg">Application Rejected</h4>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Unfortunately, your application was not selected.
+                        </p>
+                      </>
+                    )}
+
+                    {applicationStatus === "WITHDRAWN" && (
+                      <>
+                        <AlertTriangle className="mx-auto mb-3 text-gray-500" size={40} />
+                        <h4 className="font-semibold text-lg">Application Withdrawn</h4>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          You have withdrawn this application.
+                        </p>
+                      </>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Phone</label>
-                    <Input type="tel" placeholder="+977-..." value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Why do you want to volunteer?</label>
-                    <Textarea placeholder="Share your motivation..." value={applicantMessage} onChange={(e) => setApplicantMessage(e.target.value)} rows={4} />
-                  </div>
-                  <Button className="w-full gap-2 text-base h-12" size="lg">
-                    <Heart size={18} /> Submit Application
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    You'll receive a confirmation email within 48 hours.
-                  </p>
-                </div>
+                )}
               </motion.div>
 
               {/* Contact Info */}
@@ -380,7 +541,7 @@ const VolunteerDetails = () => {
         onClose={() => setSelectedImage(null)}
       />
       <Footer />
-    </div>
+    </div >
   );
 };
 

@@ -37,6 +37,13 @@ export interface CampaignRequest {
 
   uploadedDocs: Record<string, File | null>;
 }
+
+export interface CampaignUpdateResponse {
+  id: number;
+  title: string;
+  body: string;
+  date: string;
+}
 export interface CampaignResponse {
   id: number;
   title: string;
@@ -55,9 +62,11 @@ export interface CampaignResponse {
   contactPhone: string | null;
   coverImage?: string;
   images: string[];
+  updates: CampaignUpdateResponse[];
   status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
   createdAt: string;
   updatedAt: string;
+  
 }
 
 export const createCampaign = async (data: CampaignRequest) => {
@@ -159,7 +168,7 @@ export const getCampaignById = async (id: string | number) => {
 };
 
 export const updateCampaign = async (id: number, data: CampaignRequest) => {
-  const { data: response } = await api.put(`/organizer/camapaign/${id}`, data);
+  const { data: response } = await api.put(`/organizer/campaign/${id}`, data);
   return response;
 };
 

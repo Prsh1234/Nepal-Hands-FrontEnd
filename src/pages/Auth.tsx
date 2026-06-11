@@ -57,7 +57,7 @@ const Auth = () => {
         localStorage.setItem("AUTH_TOKEN", data.accessToken);
         localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate("/profile");
       } else {
         const { data } = await api.post("/auth/signup", {
           email: form.email,
@@ -68,7 +68,7 @@ const Auth = () => {
         localStorage.setItem("AUTH_TOKEN", data.accessToken);
         localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
         toast.success("Account created successfully!");
-        navigate("/dashboard");
+        navigate("/profile");
       }
     } catch (err: any) {
       const msg = err.response?.data?.error || "Something went wrong";

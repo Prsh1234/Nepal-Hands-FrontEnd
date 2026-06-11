@@ -26,6 +26,8 @@ export interface Campaign {
   longDescription: string;
   location: string;
   startDate: string;
+  coverImage: string;
+  images: string[];
   updates: CampaignUpdate[];
   expenses: Expense[];
   recentDonors: { name: string; amount: number; date: string }[];
@@ -58,6 +60,13 @@ Our project will install 12 community water filtration units across 5 villages, 
 The project is designed to be self-sustaining. Local committees will manage the systems, and a small monthly contribution from households will fund ongoing maintenance.`,
     location: "Dolakha, Bagmati Province",
     startDate: "2026-02-15",
+    coverImage: "https://images.unsplash.com/photo-1541544741938-0af808871cc0?w=1600&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1505672678657-cc7037095e60?w=900&q=80",
+      "https://images.unsplash.com/photo-1532635241-17e820acc59f?w=900&q=80",
+      "https://images.unsplash.com/photo-1473773508845-188df298d2d1?w=900&q=80",
+      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=900&q=80",
+    ],
     updates: [
       { date: "2026-04-10", title: "Site surveys completed", description: "Our team completed geological and water quality surveys in all 5 target villages. Water contamination levels confirmed — urgent action needed.", type: "milestone" },
       { date: "2026-04-02", title: "First filtration unit ordered", description: "We've placed the order for the first 4 bio-sand filtration units. Expected delivery in 2 weeks.", type: "update" },
@@ -107,6 +116,14 @@ This campaign aims to rebuild 3 primary schools using earthquake-resistant const
 Construction follows Nepal's updated building codes with reinforced concrete frames and proper foundation engineering.`,
     location: "Sindhupalchok, Bagmati Province",
     startDate: "2026-01-10",
+    coverImage: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1600&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=900&q=80",
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=900&q=80",
+      "https://images.unsplash.com/photo-1588072432836-e10032774350?w=900&q=80",
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=900&q=80",
+    ],
+    
     updates: [
       { date: "2026-04-08", title: "Second school foundation complete", description: "Foundation work for the second school in Barhabise is now complete. Walls going up next week!", type: "milestone" },
       { date: "2026-03-25", title: "First school walls complete", description: "The first school in Melamchi now has all walls constructed. Roofing work begins next week.", type: "milestone" },
@@ -150,6 +167,13 @@ Construction follows Nepal's updated building codes with reinforced concrete fra
 Each participant will receive 3 months of intensive training, followed by 6 months of mentorship and access to micro-loans to start their own businesses.`,
     location: "Chitwan, Bagmati Province",
     startDate: "2026-03-01",
+    coverImage: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=1600&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=900&q=80",
+      "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=900&q=80",
+      "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=900&q=80",
+      "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=900&q=80",
+    ],
     updates: [
       { date: "2026-04-05", title: "Training center lease signed", description: "Secured a spacious venue in Bharatpur for the training center. Renovations starting next week.", type: "milestone" },
       { date: "2026-03-15", title: "Curriculum finalized", description: "Our team of experts has finalized the training curriculum covering all 5 skill areas.", type: "update" },

@@ -7,7 +7,6 @@ export interface VolunteerOpportunityRequest {
   location: string;
   description: string;
   longDescription: string;
-  linkedCampaignId: string | null;
   requiredSkills: string[];
   volunteerSpots: number;
   minimumAge: number;
@@ -43,6 +42,13 @@ export interface VolunteerOpportunityRequest {
 
   uploadedDocs: Record<string, File | null>;
 }
+
+export interface VolunteerUpdateResponse {
+  id: number;
+  title: string;
+  body: string;
+  date: string;
+}
 export interface VolunteerOpportunityResponse {
     id: number;
     title: string;
@@ -50,7 +56,6 @@ export interface VolunteerOpportunityResponse {
     location: string;
     description: string;
     longDescription: string;
-    linkedCampaignId: string | null;
     requiredSkills: string[];
     volunteerSpots: number;
     minimumAge: number;
@@ -67,6 +72,7 @@ export interface VolunteerOpportunityResponse {
     contactName: string;
     contactEmail: string;
     contactPhone: string | null;
+    updates: VolunteerUpdateResponse[];
     status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
     createdAt: string;
     updatedAt: string;
@@ -82,7 +88,6 @@ export const createVolunteerOpportunity = async (data: VolunteerOpportunityReque
   formData.append("location", data.location);
   formData.append("description", data.description);
   formData.append("longDescription", data.longDescription);
-  formData.append("linkedCampaignId", data.linkedCampaignId || "");
   formData.append("requiredSkills", data.requiredSkills.join(","));
   formData.append("volunteerSpots", String(data.volunteerSpots));
   formData.append("minimumAge", String(data.minimumAge));
@@ -175,7 +180,7 @@ export const getVolunteerOpportunities = async (params?: {
   
   // Public — no auth needed, fetches a single ACTIVE opportunity by id
   export const getVolunteerOpportunityById = async (id: string | number) => {
-    const { data } = await api.get(`/organizer/volunteer-opportunities/${id}`);
+    const { data } = await api.get(`/volunteer/${id}`);
     return data as VolunteerOpportunityResponse;
   };
   

@@ -51,6 +51,12 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-3">
           <NotificationBell />
           <Button variant="ghost" size="sm" asChild>
+            <Link to="/dashboard">Dashboard</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/profile">Profile</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link to="/auth">Sign In</Link>
           </Button>
           <Button size="sm" asChild><Link to="/create">Start Campaign</Link></Button>

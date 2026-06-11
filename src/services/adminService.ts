@@ -12,7 +12,16 @@ export const getVolunteerOpportunities = async (params?: {
   
   // Public — no auth needed, fetches a single ACTIVE opportunity by id
 
-  
+  // export const deleteVolunteerOpportunity = async (
+  //   id: string | number,
+  // ) => {
+  //   const { data } = await api.delete(
+  //     `/admin/volunteer-opportunities/delete/${id}`,
+  //     null,
+      
+  //   );
+  //   return data;
+  // };
 
   export const updateVolunteerStatus = async (
     id: string | number,

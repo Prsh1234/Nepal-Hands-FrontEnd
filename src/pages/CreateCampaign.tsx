@@ -76,6 +76,10 @@ const CreateCampaign = () => {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, File | null>>({});
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
+
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleDocumentUpload = (
     docId: string,
     file: File | null
@@ -249,6 +253,10 @@ const CreateCampaign = () => {
 
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // 🔒 block double click
+
+    setIsSubmitting(true);
+
     try {
       await createCampaign({
         title,
@@ -267,7 +275,7 @@ const CreateCampaign = () => {
         contactPhone: contactPhone || null,
         coverImage: coverImageFile,
         images: galleryImageFiles,
-        //verification
+
         website,
         orgLegalName,
         orgType,
@@ -281,15 +289,18 @@ const CreateCampaign = () => {
         authorizedSignatory,
         signatoryRole,
         uploadedDocs,
-        
       });
-      toast.success("Volunteer request submitted! We'll review it within 24 hours.");
+
+      toast.success("Campaign submitted successfully!");
       navigate("/");
     } catch (err: any) {
       const msg = err?.errors
-        ? Object.values(err.errors).join(", ")   // Spring field-level errors
+        ? Object.values(err.errors).join(", ")
         : err?.message ?? "Something went wrong";
+
       toast.error(msg);
+    } finally {
+      setIsSubmitting(false); // 🔓 unlock after response
     }
   };
 
@@ -728,8 +739,8 @@ const CreateCampaign = () => {
                             key={t.id}
                             onClick={() => setOrgType(t.id)}
                             className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${orgType === t.id
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-border hover:border-primary/40 text-foreground"
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border hover:border-primary/40 text-foreground"
                               }`}
                           >
                             {t.label}
@@ -1116,9 +1127,14 @@ const CreateCampaign = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
+                disabled={isSubmitting}
                 className="rounded-xl bg-secondary hover:bg-secondary/90"
               >
-                <Check className="w-4 h-4 mr-1" /> Submit Campaign
+                {isSubmitting ? "Submitting..." : (
+                  <>
+                    <Check className="w-4 h-4 mr-1" /> Submit Campaign
+                  </>
+                )}
               </Button>
             )}
           </div>

@@ -18,7 +18,6 @@ import {
   BadgeCheck,
   FileCheck,
 } from "lucide-react";
-import { campaigns } from "@/data/campaigns";
 import { createVolunteerOpportunity } from "@/services/volunteerService";
 import { toast } from "sonner";
 const CATEGORIES = [
@@ -114,7 +113,6 @@ const CreateVolunteer = () => {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [longDescription, setLongDescription] = useState("");
-  const [linkedCampaign, setLinkedCampaign] = useState("");
 
   // Step 1: Requirements
   const [skills, setSkills] = useState<string[]>([]);
@@ -280,13 +278,12 @@ const CreateVolunteer = () => {
 
   const handleSubmit = async () => {
     try {
-      await createVolunteerOpportunity({
+      const response = await createVolunteerOpportunity({
         title,
         category,
         location,
         description,
         longDescription,
-        linkedCampaignId: linkedCampaign || null,
         requiredSkills: skills,
         volunteerSpots: Number(spots),
         minimumAge: Number(ageMin),
@@ -319,7 +316,7 @@ const CreateVolunteer = () => {
         uploadedDocs,
       });
       toast.success("Volunteer request submitted! We'll review it within 24 hours.");
-      navigate("/");
+      navigate(`/volunteer/${response.id}`);
     } catch (err: any) {
       const msg = err?.errors
         ? Object.values(err.errors).join(", ")   // Spring field-level errors
@@ -334,7 +331,6 @@ const CreateVolunteer = () => {
     exit: { opacity: 0, x: -40 },
   };
 
-  const linkedCampaignData = campaigns.find((c) => c.id === linkedCampaign);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -470,43 +466,6 @@ const CreateVolunteer = () => {
                     <p className="text-xs text-muted-foreground">
                       {longDescription.length} characters (minimum 40)
                     </p>
-                  </div>
-
-
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">
-                      Link to Campaign (optional)
-                    </label>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Associate this request with an active campaign for visibility.
-                    </p>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setLinkedCampaign("")}
-                        className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${linkedCampaign === ""
-                          ? "border-primary bg-primary/5 text-primary font-medium"
-                          : "border-border hover:border-primary/40 text-muted-foreground"
-                          }`}
-                      >
-                        Standalone — not linked to any campaign
-                      </button>
-                      {campaigns.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => setLinkedCampaign(c.id)}
-                          className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-all ${linkedCampaign === c.id
-                            ? "border-primary bg-primary/5 text-primary font-medium"
-                            : "border-border hover:border-primary/40 text-foreground"
-                            }`}
-                        >
-                          <span className="font-medium">{c.title}</span>
-                          <span className="block text-xs text-muted-foreground mt-0.5">
-                            by {c.org} • {c.progress}% funded
-                          </span>
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </>
               )}
@@ -1144,19 +1103,7 @@ const CreateVolunteer = () => {
                     <p className="text-sm text-muted-foreground">{longDescription}</p>
 
 
-                    {linkedCampaignData && (
-                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                        <p className="text-xs font-semibold text-primary mb-0.5">
-                          Linked Campaign
-                        </p>
-                        <p className="text-sm font-medium text-foreground">
-                          {linkedCampaignData.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          by {linkedCampaignData.org}
-                        </p>
-                      </div>
-                    )}
+                    
 
                     <div className="border-t border-border pt-4 space-y-3">
                       <div className="grid grid-cols-2 gap-4 text-sm">

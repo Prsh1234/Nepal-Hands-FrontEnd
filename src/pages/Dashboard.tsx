@@ -122,18 +122,23 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl font-heading">
-              {mockUser.avatar}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl font-heading">
+                {mockUser.avatar}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold font-heading text-foreground">
+                  Welcome back, {mockUser.name.split(" ")[0]}
+                </h1>
+                <p className="text-muted-foreground">
+                  Member since {mockUser.joinedDate}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold font-heading text-foreground">
-                Welcome back, {mockUser.name.split(" ")[0]}
-              </h1>
-              <p className="text-muted-foreground">
-                Member since {mockUser.joinedDate}
-              </p>
-            </div>
+            <Button variant="outline" asChild>
+              <Link to="/profile"><User className="w-4 h-4" /> View Profile</Link>
+            </Button>
           </div>
         </motion.div>
 

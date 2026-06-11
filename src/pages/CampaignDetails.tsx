@@ -14,6 +14,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getCampaignById, CampaignResponse } from "@/services/campaignService";
 import ImageModal from "@/modal/ImageModal";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 const formatNPR = (n: number) =>
   "NPR " + n.toLocaleString("en-IN");
@@ -132,7 +133,7 @@ const CampaignDetails = () => {
             <Tabs defaultValue="about" className="w-full">
               <TabsList className="w-full grid grid-cols-3 bg-muted">
                 <TabsTrigger value="about">About</TabsTrigger>
-                {/* <TabsTrigger value="updates">Updates ({campaign.updates.length})</TabsTrigger> */}
+                <TabsTrigger value="updates">  Updates ({campaign.updates?.length || 0})</TabsTrigger>
                 <TabsTrigger value="transparency">Transparency</TabsTrigger>
               </TabsList>
 
@@ -190,7 +191,7 @@ const CampaignDetails = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.08 }}
-                            onClick={() => setSelectedImage(src)}
+                            onClick={() => setSelectedImage(`data:image/jpeg;base64,${src}`)}
                             className="w-full h-40 sm:h-48 object-cover rounded-lg border border-border"
                           />
                         ))}
@@ -198,6 +199,34 @@ const CampaignDetails = () => {
                     </div>
                   )}
                 </motion.div>
+              </TabsContent>
+
+              {/* Updates Timeline Tab */}
+              <TabsContent value="updates">
+                <div className="mt-4 space-y-0">
+                {campaign.updates?.map((update, i) => (
+                    <motion.div key={i}
+                      initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                      className="relative pl-8 pb-8 last:pb-0"
+                    >
+                      {/* Timeline line */}
+                      {i < campaign.updates.length - 1 && (
+                        <div className="absolute left-[11px] top-8 w-0.5 h-full bg-border" />
+                      )}
+                      {/* Timeline dot */}
+                      <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-card border-2 border-primary flex items-center justify-center">
+                      <CheckCircle size={16} className="text-primary" />                      </div>
+                      <div className="bg-card rounded-xl p-5 shadow-card border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-muted-foreground">{formatDateTime(update.date)}</span>
+                        </div>
+                        <h4 className="font-display font-semibold text-foreground mb-1">{update.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{update.body}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </TabsContent>
             </Tabs>
 
@@ -225,7 +254,7 @@ const CampaignDetails = () => {
                         : "bg-muted text-foreground border-border hover:border-primary/50"
                         }`}
                     >
-                      ₹{amt.toLocaleString()}
+                      {formatNPR(amt)}
                     </button>
                   ))}
                   <button
