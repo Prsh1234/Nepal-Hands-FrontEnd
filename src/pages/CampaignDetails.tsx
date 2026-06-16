@@ -15,6 +15,7 @@ import Footer from "@/components/Footer";
 import { getCampaignById, CampaignResponse } from "@/services/campaignService";
 import ImageModal from "@/modal/ImageModal";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import {  esewaStatus, handleEsewaPayment } from "@/services/payment";
 
 const formatNPR = (n: number) =>
   "NPR " + n.toLocaleString("en-IN");
@@ -25,7 +26,7 @@ const CampaignDetails = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [donationAmount, setDonationAmount] = useState("");
+  const [donationAmount, setDonationAmount] = useState<number | null>(0);
   const [donorName, setDonorName] = useState("");
   const [donorMessage, setDonorMessage] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -40,6 +41,10 @@ const CampaignDetails = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+const handlePaymentClick = async () => {
+  if (!donationAmount || !campaign?.id) return;
+  await handleEsewaPayment(donationAmount, campaign?.id);
+};
 
   if (loading) {
     return (
@@ -248,8 +253,8 @@ const CampaignDetails = () => {
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {presetAmounts.map((amt) => (
                     <button key={amt}
-                      onClick={() => setDonationAmount(String(amt))}
-                      className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${donationAmount === String(amt)
+                      onClick={() => setDonationAmount(Number(amt))}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${donationAmount === Number(amt)
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-muted text-foreground border-border hover:border-primary/50"
                         }`}
@@ -258,7 +263,7 @@ const CampaignDetails = () => {
                     </button>
                   ))}
                   <button
-                    onClick={() => setDonationAmount("")}
+                    onClick={() => setDonationAmount(0)}
                     className="py-2 px-3 rounded-lg text-sm font-medium border border-border bg-muted text-foreground hover:border-primary/50 transition-all"
                   >
                     Custom
@@ -272,7 +277,7 @@ const CampaignDetails = () => {
                       type="number"
                       placeholder="Enter amount"
                       value={donationAmount}
-                      onChange={(e) => setDonationAmount(e.target.value)}
+                      onChange={(e) => setDonationAmount(Number(e.target.value))}
                       className="text-lg font-semibold"
                     />
                   </div>
@@ -307,10 +312,12 @@ const CampaignDetails = () => {
                     />
                   </div>
 
-                  <Button className="w-full gap-2 text-base h-12" size="lg">
+                  <Button className="w-full gap-2 text-base h-12" size="lg" onClick={handlePaymentClick}>
                     <Heart size={18} /> Donate Now
                   </Button>
-
+                  <Button className="w-full gap-2 text-base h-12" size="lg" onClick={esewaStatus}>
+                    <Heart size={18} /> check
+                  </Button>
                   <p className="text-xs text-muted-foreground text-center">
                     100% of your donation goes directly to this campaign. Nepal Hands charges zero platform fees.
                   </p>
