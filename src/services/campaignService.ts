@@ -53,6 +53,8 @@ export interface CampaignResponse {
   longDescription: string;
   projectScope: string[];
   goal: number;
+  totalDonors: number;
+  raised: number;
   duration: string;
   organizer: string;
   startDate: string;
@@ -63,12 +65,17 @@ export interface CampaignResponse {
   coverImage?: string;
   images: string[];
   updates: CampaignUpdateResponse[];
+  recentDonors: DonorResponse[];
   status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
   createdAt: string;
   updatedAt: string;
-  
 }
-
+export interface DonorResponse {
+  donorId: number;
+  donorName: string;
+  amount: number;
+  donatedAt: string;
+}
 export const createCampaign = async (data: CampaignRequest) => {
   const formData = new FormData();
 
@@ -167,6 +174,17 @@ export const getCampaignById = async (id: string | number) => {
   return data as CampaignResponse;
 };
 
+
+
+export const getCampaignExpenses = async (
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    `/volunteer/campaign/transparency/expenses/${campaignId}`
+  );
+
+  return data;
+};
 export const updateCampaign = async (id: number, data: CampaignRequest) => {
   const { data: response } = await api.put(`/organizer/campaign/${id}`, data);
   return response;

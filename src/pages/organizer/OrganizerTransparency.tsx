@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,20 +25,14 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  X,
+  FileCheck,
 } from "lucide-react";
-import { mockCampaigns } from "@/data/organizer";
 import { toast } from "sonner";
+import { addCampaignExpenses, CampaignExpenses, getCampaignDashboardExpenses, getOrganizerCampaignSelect } from "@/services/organizerDashboard";
+import api from "@/lib/api";
 
-type Expense = {
-  id: string;
-  campaign: string;
-  category: string;
-  vendor: string;
-  amount: number;
-  date: string;
-  receipt: string;
-  status: "verified" | "pending";
-};
+
 
 type MilestoneItem = {
   id: string;
@@ -59,12 +53,7 @@ type ProofDoc = {
   size: string;
 };
 
-const initialExpenses: Expense[] = [
-  { id: "e1", campaign: "Clean Water for Dolakha", category: "Materials", vendor: "Himalayan Pipes Pvt Ltd", amount: 185000, date: "2026-04-22", receipt: "INV-2204.pdf", status: "verified" },
-  { id: "e2", campaign: "Clean Water for Dolakha", category: "Labor", vendor: "Local Crew (12 workers)", amount: 96000, date: "2026-04-28", receipt: "wage-sheet-w2.pdf", status: "verified" },
-  { id: "e3", campaign: "School Rebuilding in Sindhupalchok", category: "Construction", vendor: "Sagarmatha Builders", amount: 420000, date: "2026-04-15", receipt: "build-phase1.pdf", status: "verified" },
-  { id: "e4", campaign: "School Rebuilding in Sindhupalchok", category: "Transport", vendor: "Annapurna Logistics", amount: 32000, date: "2026-05-01", receipt: "transport-may.pdf", status: "pending" },
-];
+
 
 const initialMilestones: MilestoneItem[] = [
   { id: "m1", campaign: "Clean Water for Dolakha", title: "Pipeline procurement", target: 200000, spent: 185000, status: "completed", dueDate: "2026-04-25" },
@@ -83,7 +72,7 @@ const EXPENSE_CATEGORIES = ["Materials", "Labor", "Construction", "Transport", "
 const PROOF_TYPES = ["Site Photo", "Receipt", "Bank Statement", "Audit Report", "Beneficiary List", "Field Report", "Other"];
 
 const OrganizerTransparency = () => {
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [expenses, setExpenses] = useState<CampaignExpenses[]>([]);
   const [milestones, setMilestones] = useState<MilestoneItem[]>(initialMilestones);
   const [proofs, setProofs] = useState<ProofDoc[]>(initialProofs);
 
@@ -91,39 +80,183 @@ const OrganizerTransparency = () => {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [proofOpen, setProofOpen] = useState(false);
-
-  const [newExpense, setNewExpense] = useState({ campaign: "", category: "", vendor: "", amount: "", date: "", receipt: "", note: "" });
+  const [newExpense, setNewExpense] = useState({
+    campaignId: "",
+    category: "",
+    vendor: "",
+    amount: "",
+    date: "",
+    fileName: "",
+    file: null as File | null
+  });
   const [newMilestone, setNewMilestone] = useState({ campaign: "", title: "", target: "", dueDate: "" });
   const [newProof, setNewProof] = useState({ campaign: "", type: "", name: "" });
 
-  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalRaised = mockCampaigns.reduce((s, c) => s + c.raised, 0);
+  // const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
+  // const totalRaised = mockCampaigns.reduce((s, c) => s + c.raised, 0);
 
+  const [campaignOps, setCampaignOps] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState("all");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [direction, setDirection] = useState("desc");
+  useEffect(() => {
 
+    getOrganizerCampaignSelect()
+      .then(setCampaignOps)
+      .catch(console.error);
 
-  const addExpense = () => {
-    if (!newExpense.campaign || !newExpense.category || !newExpense.vendor || !newExpense.amount || !newExpense.date) {
+  }, []);
+  useEffect(() => {
+    getCampaignDashboardExpenses(
+      page,
+      5,
+      direction,
+      selectedCampaign
+    )
+      .then((res) => {
+        setExpenses(res.content);
+        setTotalPages(res.totalPages);
+      })
+      .catch(console.error)
+
+  }, [page, direction, selectedCampaign]);
+
+  const previewDocument = async (
+    endpoint: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    try {
+      const res = await api.get(endpoint, {
+        responseType: "blob",
+      });
+
+      const rawHeader = res.headers["content-type"];
+
+      const mime =
+        typeof rawHeader === "string"
+          ? rawHeader
+          : Array.isArray(rawHeader)
+            ? rawHeader[0]
+            : contentType || "";
+
+      const blob = new Blob([res.data], { type: mime });
+
+      const url = window.URL.createObjectURL(blob);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 60000);
+
+      const ext = fileName.split(".").pop()?.toLowerCase();
+
+      if (mime.includes("pdf") || ext === "pdf") {
+        window.open(url, "_blank");
+        return;
+      }
+
+      if (ext === "docx" || ext === "doc") {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        return;
+      }
+
+      if (
+        mime.startsWith("text/") ||
+        ext === "txt" ||
+        ext === "csv" ||
+        ext === "json"
+      ) {
+        window.open(url, "_blank");
+        return;
+      }
+      toast.error("Unsupported file type");
+    } catch {
+      toast.error("Failed to load document");
+    }
+  };
+  const handleDocumentPreview = (
+    expenseId: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/organizer/dashboard/campaign/transparency/expenses/${expenseId}`,
+      fileName,
+      contentType
+    );
+  };
+  const handleDocumentUpload = (file: File | null) => {
+    setNewExpense((prev) => ({
+      ...prev,
+      file,
+    }));
+  };
+  const removeDocument = () => {
+    setNewExpense((prev) => ({
+      ...prev,
+      file: null,
+    }));
+  };
+  const addExpense = async () => {
+    if (
+      !newExpense.campaignId ||
+      !newExpense.category ||
+      !newExpense.vendor ||
+      !newExpense.amount ||
+      !newExpense.date ||
+      !newExpense.fileName ||
+      !newExpense.file
+    ) {
       toast.error("Please fill all required fields");
       return;
     }
-    setExpenses([
-      {
-        id: `e${Date.now()}`,
-        campaign: newExpense.campaign,
-        category: newExpense.category,
-        vendor: newExpense.vendor,
-        amount: Number(newExpense.amount),
-        date: newExpense.date,
-        receipt: newExpense.receipt || "receipt.pdf",
-        status: "pending",
-      },
-      ...expenses,
-    ]);
-    setNewExpense({ campaign: "", category: "", vendor: "", amount: "", date: "", receipt: "", note: "" });
-    setExpenseOpen(false);
-    toast.success("Expense logged to the public ledger");
-  };
 
+    try {
+      const response = await addCampaignExpenses({
+        campaignId: newExpense.campaignId,
+        vendor: newExpense.vendor,
+        amount: newExpense.amount,
+        category: newExpense.category,
+        file: newExpense.file,
+        fileName: newExpense.fileName,
+        date: newExpense.date,
+      });
+
+
+      const refreshed = await getCampaignDashboardExpenses(
+        0,
+        5,
+        direction
+        
+      );
+
+      setExpenses(refreshed.content);
+      setTotalPages(refreshed.totalPages);
+      setNewExpense({
+        campaignId: "",
+        category: "",
+        vendor: "",
+        amount: "",
+        date: "",
+        fileName: "",
+        file: null,
+      });
+
+      setExpenseOpen(false);
+
+      toast.success("Expense logged successfully!");
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors).join(", ")
+        : err?.message ?? "Something went wrong";
+
+      toast.error(msg);
+    }
+  };
   const addMilestone = () => {
     if (!newMilestone.campaign || !newMilestone.title || !newMilestone.target || !newMilestone.dueDate) {
       toast.error("Please fill all required fields");
@@ -152,10 +285,7 @@ const OrganizerTransparency = () => {
     toast.success("Proof document uploaded");
   };
 
-  const removeExpense = (id: string) => {
-    setExpenses(expenses.filter((e) => e.id !== id));
-    toast.success("Expense removed");
-  };
+
   const removeProof = (id: string) => {
     setProofs(proofs.filter((p) => p.id !== id));
     toast.success("Document removed");
@@ -179,11 +309,11 @@ const OrganizerTransparency = () => {
       </div>
 
       <div className="grid sm:grid-cols-4 gap-4">
-        <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground">Total Raised</p><p className="text-2xl font-bold font-heading">NPR {totalRaised.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground">Total Spent</p><p className="text-2xl font-bold font-heading">NPR {totalSpent.toLocaleString()}</p></CardContent></Card>
+        {/* <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground">Total Raised</p><p className="text-2xl font-bold font-heading">NPR {totalRaised.toLocaleString()}</p></CardContent></Card> */}
+        {/* <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground">Total Spent</p><p className="text-2xl font-bold font-heading">NPR {totalSpent.toLocaleString()}</p></CardContent></Card> */}
       </div>
 
-      
+
 
       <Tabs defaultValue="expenses" className="w-full">
         <TabsList>
@@ -203,9 +333,21 @@ const OrganizerTransparency = () => {
                 <div className="space-y-3">
                   <div>
                     <Label className="text-xs">Campaign</Label>
-                    <Select value={newExpense.campaign} onValueChange={(v) => setNewExpense({ ...newExpense, campaign: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                      <SelectContent>{mockCampaigns.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
+                    <Select
+                      value={newExpense.campaignId}
+                      onValueChange={(v) => setNewExpense({ ...newExpense, campaignId: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select campaign" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {campaignOps.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -231,13 +373,35 @@ const OrganizerTransparency = () => {
                       <Input type="date" value={newExpense.date} onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })} />
                     </div>
                     <div>
-                      <Label className="text-xs">Receipt file</Label>
-                      <Input value={newExpense.receipt} placeholder="receipt.pdf" onChange={(e) => setNewExpense({ ...newExpense, receipt: e.target.value })} />
+                      <Label className="text-xs">File Name</Label>
+                      <Input value={newExpense.fileName} placeholder="receipt.pdf" onChange={(e) => setNewExpense({ ...newExpense, fileName: e.target.value })} />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs">Note (optional)</Label>
-                    <Textarea rows={2} value={newExpense.note} onChange={(e) => setNewExpense({ ...newExpense, note: e.target.value })} />
+                  <div className="shrink-0">
+                    {newExpense.file ? (
+                      <button
+                        type="button"
+                        onClick={removeDocument}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
+                      >
+                        <X className="w-3 h-3" />
+                        {newExpense.file.name}
+                      </button>
+                    ) : (
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer">
+                        <Upload className="w-3 h-3" />
+                        Upload
+
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          hidden
+                          onChange={(e) =>
+                            handleDocumentUpload(e.target.files?.[0] || null)
+                          }
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
@@ -246,6 +410,68 @@ const OrganizerTransparency = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
+          <div className="flex gap-4 flex-wrap">
+            <div>
+              <Label className="mb-2 block">
+                Campaigns
+              </Label>
+
+              <Select
+                value={selectedCampaign}
+                onValueChange={(value) => {
+                  setSelectedCampaign(value);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="w-72">
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">
+                    All Campaigns
+                  </SelectItem>
+
+                  {campaignOps.map((c) => (
+                    <SelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                    >
+                      {c.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-2 block">
+                Order
+              </Label>
+
+              <Select
+                value={direction}
+                onValueChange={(value) => {
+                  setDirection(value);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="desc">
+                    Newest First
+                  </SelectItem>
+
+                  <SelectItem value="asc">
+                    Oldest First
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -258,28 +484,24 @@ const OrganizerTransparency = () => {
                     <TableHead>Vendor</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Receipt</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {expenses.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell className="text-sm">{new Date(e.date).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{e.campaign}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{e.campaignTitle}</TableCell>
                       <TableCell><Badge variant="secondary">{e.category}</Badge></TableCell>
                       <TableCell className="text-sm">{e.vendor}</TableCell>
                       <TableCell className="font-medium">NPR {e.amount.toLocaleString()}</TableCell>
-                      <TableCell><Button variant="ghost" size="sm"><Download className="w-3 h-3 mr-1" /> {e.receipt}</Button></TableCell>
                       <TableCell>
-                        {e.status === "verified" ? (
-                          <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Verified</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => removeExpense(e.id)}><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm"
+                          onClick={() =>
+                            handleDocumentPreview(e.id, e.fileName, e.contentType)
+                          }>
+                          <Download className="w-3 h-3 mr-1" />
+                          {e.fileName}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -287,6 +509,29 @@ const OrganizerTransparency = () => {
               </Table>
             </CardContent>
           </Card>
+          {totalPages > 0 && (
+            <div className="flex justify-center items-center gap-3">
+              <Button
+                variant="outline"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+
+              <span className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="milestones" className="space-y-3">
@@ -302,7 +547,7 @@ const OrganizerTransparency = () => {
                     <Label className="text-xs">Campaign</Label>
                     <Select value={newMilestone.campaign} onValueChange={(v) => setNewMilestone({ ...newMilestone, campaign: v })}>
                       <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                      <SelectContent>{mockCampaigns.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
+                      <SelectContent>{campaignOps.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div>
@@ -340,8 +585,8 @@ const OrganizerTransparency = () => {
                       </div>
                       <Badge variant="outline" className={
                         m.status === "completed" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
-                        m.status === "in-progress" ? "bg-blue-100 text-blue-700 border-blue-200" :
-                        "bg-muted text-muted-foreground"
+                          m.status === "in-progress" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                            "bg-muted text-muted-foreground"
                       }>
                         {m.status === "completed" && <CheckCircle2 className="w-3 h-3 mr-1" />}
                         {m.status === "in-progress" && <Clock className="w-3 h-3 mr-1" />}
@@ -383,7 +628,7 @@ const OrganizerTransparency = () => {
                     <Label className="text-xs">Campaign</Label>
                     <Select value={newProof.campaign} onValueChange={(v) => setNewProof({ ...newProof, campaign: v })}>
                       <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                      <SelectContent>{mockCampaigns.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
+                      <SelectContent>{campaignOps.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div>

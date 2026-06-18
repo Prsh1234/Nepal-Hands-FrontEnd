@@ -2,20 +2,25 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Heart, Clock, Users, CheckCircle, MapPin, Calendar,
   Share2, TrendingUp, FileText, CircleDollarSign, MessageSquare,
   Loader2,
+  Receipt,
+  Download,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getCampaignById, CampaignResponse } from "@/services/campaignService";
+import { getCampaignById, CampaignResponse, DonorResponse, getCampaignExpenses } from "@/services/campaignService";
 import ImageModal from "@/modal/ImageModal";
-import { formatDate, formatDateTime } from "@/lib/utils";
-import {  esewaStatus, handleEsewaPayment } from "@/services/payment";
+import { formatDateTime } from "@/lib/utils";
+import { handleEsewaCampaignPayment } from "@/services/payment";
+import { CampaignExpenses } from "@/services/organizerDashboard";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 const formatNPR = (n: number) =>
   "NPR " + n.toLocaleString("en-IN");
@@ -27,24 +32,108 @@ const CampaignDetails = () => {
   const [notFound, setNotFound] = useState(false);
 
   const [donationAmount, setDonationAmount] = useState<number | null>(0);
-  const [donorName, setDonorName] = useState("");
-  const [donorMessage, setDonorMessage] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
-
+  const [anonymous, setAnonymous] = useState(false);
+  const [expenses, setExpenses] = useState<CampaignExpenses[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const progress = campaign
+    ? campaign.goal > 0
+      ? Math.min((campaign.raised / campaign.goal) * 100, 100)
+      : 0
+    : 0;
+  const daysLeft = campaign
+    ? Math.ceil(
+      (new Date(campaign.endDate).getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24)
+    )
+    : 0;
   useEffect(() => {
-    if (!id) return;
-    setLoading(true);
+    if (!id) return; setLoading(true);
     getCampaignById(id)
       .then(setCampaign)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
 
-const handlePaymentClick = async () => {
-  if (!donationAmount || !campaign?.id) return;
-  await handleEsewaPayment(donationAmount, campaign?.id);
-};
+  }, [id]);
+  useEffect(() => {
+    if (!id) return;
+
+    getCampaignExpenses(id)
+      .then((res) => {
+        setExpenses(res);
+      })
+      .catch(console.error);
+  }, [id]);
+  const previewDocument = async (
+    endpoint: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    try {
+      const res = await api.get(endpoint, {
+        responseType: "blob",
+      });
+
+      const rawHeader = res.headers["content-type"];
+
+      const mime =
+        typeof rawHeader === "string"
+          ? rawHeader
+          : Array.isArray(rawHeader)
+            ? rawHeader[0]
+            : contentType || "";
+
+      const blob = new Blob([res.data], { type: mime });
+
+      const url = window.URL.createObjectURL(blob);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 60000);
+
+      const ext = fileName.split(".").pop()?.toLowerCase();
+
+      if (mime.includes("pdf") || ext === "pdf") {
+        window.open(url, "_blank");
+        return;
+      }
+
+      if (ext === "docx" || ext === "doc") {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        return;
+      }
+
+      if (
+        mime.startsWith("text/") ||
+        ext === "txt" ||
+        ext === "csv" ||
+        ext === "json"
+      ) {
+        window.open(url, "_blank");
+        return;
+      }
+      toast.error("Unsupported file type");
+    } catch {
+      toast.error("Failed to load document");
+    }
+  };
+  const handleDocumentPreview = (
+    expenseId: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/volunteer/campaign/transparency/expenses/file/${expenseId}`,
+      fileName,
+      contentType
+    );
+  };
+  const handlePaymentClick = async () => {
+    if (!donationAmount || !campaign?.id) return;
+    await handleEsewaCampaignPayment(donationAmount, campaign?.id, anonymous,);
+  };
 
   if (loading) {
     return (
@@ -117,20 +206,22 @@ const handlePaymentClick = async () => {
               className="bg-card rounded-xl p-6 shadow-card border border-border">
               <div className="flex items-end justify-between mb-2">
                 <div>
-                  {/* <p className="text-3xl font-bold text-foreground font-display">{formatNPR(campaign.raised)}</p> */}
+                  <p className="text-3xl font-bold text-foreground font-display">{formatNPR(campaign.raised)}</p>
                   <p className="text-sm text-muted-foreground">raised of {formatNPR(campaign.goal)} goal</p>
                 </div>
                 <div className="text-right">
-                  {/* <p className="text-2xl font-bold text-primary">{campaign.progress}%</p> */}
+                  <p className="text-2xl font-bold text-primary">{progress.toFixed(2)}%</p>
                 </div>
               </div>
-              {/* <Progress value={campaign.progress} className="h-3 mb-4" /> */}
+              <Progress value={progress} className="h-3 mb-4" />
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                {/* <span className="flex items-center gap-1"><Users size={14} /> {campaign.donors} donors</span>
-                <span className="flex items-center gap-1"><Clock size={14} /> {campaign.daysLeft} days left</span> */}
-                <button className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors">
-                  <Share2 size={14} /> Share
-                </button>
+                <span className="flex items-center gap-1"><Users size={14} /> {campaign.totalDonors} donors</span>
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  {daysLeft > 0
+                    ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`
+                    : "Campaign ended"}
+                </span>
               </div>
             </motion.div>
 
@@ -209,7 +300,7 @@ const handlePaymentClick = async () => {
               {/* Updates Timeline Tab */}
               <TabsContent value="updates">
                 <div className="mt-4 space-y-0">
-                {campaign.updates?.map((update, i) => (
+                  {campaign.updates?.map((update, i) => (
                     <motion.div key={i}
                       initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }} transition={{ delay: i * 0.08 }}
@@ -221,7 +312,7 @@ const handlePaymentClick = async () => {
                       )}
                       {/* Timeline dot */}
                       <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-card border-2 border-primary flex items-center justify-center">
-                      <CheckCircle size={16} className="text-primary" />                      </div>
+                        <CheckCircle size={16} className="text-primary" />                      </div>
                       <div className="bg-card rounded-xl p-5 shadow-card border border-border">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs text-muted-foreground">{formatDateTime(update.date)}</span>
@@ -231,6 +322,155 @@ const handlePaymentClick = async () => {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              </TabsContent>
+
+              {/* Transparency Dashboard Tab */}
+              <TabsContent value="transparency">
+                <div className="mt-4 space-y-6">
+                  {/* Header score + totals */}
+                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                          <ShieldCheck size={18} className="text-primary" /> Transparency Overview
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">Every rupee tracked. Every receipt public.</p>
+                      </div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-medium w-fit">
+                        <ShieldCheck size={14} /> Transparency Score: {transparencyScore}%
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Raised</p>
+                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(campaign.raised)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Spent</p>
+                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(totalSpent)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Remaining</p>
+                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(remaining)}</p>
+                      </div>
+                    </div>
+                  </div> */}
+
+                  {/* Expense Breakdown */}
+                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                    <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <TrendingUp size={18} className="text-primary" /> Fund Allocation
+                    </h3>
+                    <div className="space-y-3">
+                      {campaign.expenses.map((expense, i) => (
+                        <div key={i}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-foreground font-medium">{expense.category}</span>
+                            <span className="text-muted-foreground">{formatNPR(expense.amount)} ({expense.percentage}%)</span>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }} whileInView={{ width: `${expense.percentage}%` }}
+                              viewport={{ once: true }} transition={{ duration: 0.8, delay: i * 0.1 }}
+                              className="h-full rounded-full"
+                              style={{
+                                background: i % 2 === 0
+                                  ? "hsl(var(--primary))"
+                                  : "hsl(var(--secondary))",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div> */}
+
+
+
+                  {/* Public Expense Ledger */}
+                  <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                    <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Receipt size={18} className="text-primary" /> Public Expense Ledger
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                            <th className="py-2 pr-3 font-medium">Date</th>
+                            <th className="py-2 pr-3 font-medium">Category</th>
+                            <th className="py-2 pr-3 font-medium">Vendor</th>
+                            <th className="py-2 pr-3 font-medium">Amount</th>
+                            <th className="py-2 pr-3 font-medium">Receipt</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {expenses.map((row, i) => (
+                            <tr key={i} className="border-b border-border/60 last:border-0">
+                              <td className="py-2 pr-3 text-muted-foreground">{new Date(row.date).toLocaleDateString()}</td>
+                              <td className="py-2 pr-3">
+                                <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-muted text-foreground">{row.category}</span>
+                              </td>
+                              <td className="py-2 pr-3 text-foreground">{row.vendor}</td>
+                              <td className="py-2 pr-3 font-medium">{formatNPR(Number(row.amount))}</td>
+                              <td className="py-2 pr-3">
+                                <button className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+                                  onClick={() =>
+                                    handleDocumentPreview(row.id, row.fileName, row.contentType)
+                                  }>
+                                  <Download size={12} /> {row.fileName}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Proof Documents */}
+                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                    <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <FileText size={18} className="text-primary" /> Proof of Impact
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {proofs.map((p, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                          <div className="w-9 h-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                            {p.icon === "image" ? <ImageIcon size={16} /> : <FileText size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">{p.type} • {p.size} • {new Date(p.date).toLocaleDateString()}</p>
+                          </div>
+                          <button className="text-muted-foreground hover:text-primary" aria-label="Download">
+                            <Download size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div> */}
+
+                  {/* Verification Info */}
+                  <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                    <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <CheckCircle size={18} className="text-primary" /> Verification Status
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {[
+                        { label: "Organization Verified", status: true },
+                        { label: "Documents Reviewed", status: true },
+                        { label: "Site Visit Completed", status: true },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <CheckCircle size={16} className={item.status ? "text-primary" : "text-muted-foreground"} />
+                          <span className={`text-sm ${item.status ? "text-foreground" : "text-muted-foreground"}`}>
+                            {item.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
@@ -282,42 +522,21 @@ const handlePaymentClick = async () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Your Name</label>
-                    <Input
-                      placeholder="Full name"
-                      value={donorName}
-                      onChange={(e) => setDonorName(e.target.value)}
-                      disabled={isAnonymous}
-                    />
-                  </div>
-
                   <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={isAnonymous}
-                      onChange={(e) => setIsAnonymous(e.target.checked)}
+                      checked={anonymous}
+                      onChange={(e) => setAnonymous(e.target.checked)}
                       className="rounded border-border"
                     />
                     Donate anonymously
                   </label>
 
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1 block">Message (optional)</label>
-                    <Textarea
-                      placeholder="Leave an encouraging message..."
-                      value={donorMessage}
-                      onChange={(e) => setDonorMessage(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
 
                   <Button className="w-full gap-2 text-base h-12" size="lg" onClick={handlePaymentClick}>
                     <Heart size={18} /> Donate Now
                   </Button>
-                  <Button className="w-full gap-2 text-base h-12" size="lg" onClick={esewaStatus}>
-                    <Heart size={18} /> check
-                  </Button>
+
                   <p className="text-xs text-muted-foreground text-center">
                     100% of your donation goes directly to this campaign. Nepal Hands charges zero platform fees.
                   </p>
@@ -328,15 +547,25 @@ const handlePaymentClick = async () => {
               <div className="bg-card rounded-xl p-6 shadow-card border border-border">
                 <h4 className="font-display font-semibold text-foreground mb-4">Recent Supporters</h4>
                 <div className="space-y-3">
-                  {/* {campaign.recentDonors.map((donor, i) => (
+                  {campaign.recentDonors.map((donor, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{donor.name}</p>
-                        <p className="text-xs text-muted-foreground">{donor.date}</p>
+                        {donor.donorId ? (
+                          <Link to={`/profile/${donor.donorId}`}>
+                            <p className="text-sm font-medium text-foreground">
+                              {donor.donorName}
+                            </p>
+                          </Link>
+                        ) : (
+                          <p className="text-sm font-medium text-foreground">
+                            {donor.donorName}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">{formatDateTime(donor.donatedAt)} </p>
                       </div>
                       <span className="text-sm font-semibold text-primary">{formatNPR(donor.amount)}</span>
                     </div>
-                  ))} */}
+                  ))}
                 </div>
               </div>
             </div>

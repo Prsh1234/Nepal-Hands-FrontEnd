@@ -1,17 +1,18 @@
-import { v4 as uuidv4 } from "uuid";
-import CryptoJS from "crypto-js";
-import api from "@/lib/api";
-import axios from "axios";
 
-export const esewaPayment = async (data) => {
+import api from "@/lib/api";
+
+
+export const generateCampaignSignature = async (data) => {
   
-  const response = api.post("/payment/generate-signature", data);
+  const response = api.post("/payment/campaign/generate-signature", data);
   return response;
 }
 
-export const handleEsewaPayment = async (
+
+export const handleEsewaCampaignPayment = async (
   totalPrice:number,
-  campaignId:number
+  campaignId:number,
+  anonymous: boolean
   ) => {
   try {
     const total_amount = totalPrice;
@@ -20,18 +21,17 @@ export const handleEsewaPayment = async (
     const data = {
       campaignId,
       total_amount,
+      anonymous,
       product_code,
   };
     // generate signature
-    const response = await esewaPayment(data);
+    const response = await generateCampaignSignature(data);
     const { signature, signed_field_names, transaction_uuid } = response.data;
-    console.log(response.data);
-    console.log(signature, signed_field_names);
-    console.log(data);
 
 
 
-    const success_url = `http://localhost:8080/api/payment/esewa/success`;
+
+    const success_url = `http://localhost:8080/api/esewa/campaign/success`;
 
     const params = {
       amount: total_amount,
@@ -39,7 +39,7 @@ export const handleEsewaPayment = async (
       transaction_uuid,
       product_code: product_code,
       signature,
-      failure_url: `http://localhost:8080/api/campaign/payments/esewa/failure`,
+      failure_url: `http://localhost:8080/api/esewa/campaign/failure`,
       success_url,
       tax_amount: 0,
       product_service_charge: 0,
@@ -73,9 +73,4 @@ export const handleEsewaPayment = async (
   }
 };
 
-export const esewaStatus = async () => {
-  
-  const response = api.get("/payment/esewa/status");
-  return response;
-}
 

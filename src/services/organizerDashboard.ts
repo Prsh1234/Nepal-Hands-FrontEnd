@@ -128,3 +128,70 @@ export const rejectVolunteerApplication = async (id: number) => {
   );
   return data;
 };
+
+export interface CampaignExpensesRequest {
+  campaignId: string;
+  vendor: string;
+  amount: string;
+  category: string;
+  fileName: string;
+  date: string;
+  file?: File | null;
+}
+export interface CampaignExpenses {
+  id: string;
+  campaignId: string;
+  campaignTitle: string;
+  vendor: string;
+  amount: number;
+  category: string;
+  fileName: string;
+  date: string;
+  file?: File | null;
+  contentType?: string;
+}
+export const addCampaignExpenses = async (data: CampaignExpensesRequest) => {
+  const formData = new FormData();
+
+  formData.append("campaignId", String(data.campaignId));
+  formData.append("vendor", data.vendor);
+  formData.append("amount", String(data.amount));
+  formData.append("category", data.category);
+  formData.append("fileName", data.fileName);
+  formData.append("date", data.date);
+
+  if (data.file) {
+    formData.append("file", data.file);
+  }
+
+  const { data: response } = await api.post(
+    "/organizer/dashboard/campaign/transparency/expenses",
+    formData
+  );
+
+  return response;
+};
+
+export const getCampaignDashboardExpenses = async (
+  page = 0,
+  size = 10,
+  direction = "desc",
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    "/organizer/dashboard/campaign/transparency/expenses",
+    {
+      params: {
+        page,
+        size,
+        direction,
+        campaignId:
+          campaignId && campaignId !== "all"
+            ? campaignId
+            : undefined,
+      },
+    }
+  );
+
+  return data;
+};

@@ -24,3 +24,4 @@ export const formatDate = (date?: string | null) => {
     day: "2-digit",
   });
 };
+
