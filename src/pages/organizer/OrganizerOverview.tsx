@@ -6,19 +6,65 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, Users, HandHeart, Eye, ArrowRight, Clock } from "lucide-react";
 import { mockCampaigns, mockVolunteerOps, mockDonors, mockApplicants } from "@/data/organizer";
+import { useEffect, useState } from "react";
+import { getOrganizerCampaigns, getOrganizerDashboardStats, getRecentDonations, getVolunteerApplications } from "@/services/organizerDashboard";
 
 const totalRaised = mockCampaigns.reduce((s, c) => s + c.raised, 0);
 const totalDonors = mockCampaigns.reduce((s, c) => s + c.donors, 0);
 const totalApplicants = mockVolunteerOps.reduce((s, v) => s + v.applicants, 0);
-const totalViews = mockCampaigns.reduce((s, c) => s + c.views, 0);
 
 const OrganizerOverview = () => {
+  type DashboardStats = {
+    totalRaised: number;
+    totalDonors: number;
+    totalApplicants: number;
+  };
+  const [dashboard, setDashboard] = useState<DashboardStats>({
+    totalRaised: 0,
+    totalDonors: 0,
+    totalApplicants: 0,
+  });
   const stats = [
-    { icon: TrendingUp, label: "Total Raised", value: `NPR ${totalRaised.toLocaleString()}` },
-    { icon: Users, label: "Donors", value: totalDonors.toLocaleString() },
-    { icon: HandHeart, label: "Applicants", value: totalApplicants.toLocaleString() },
-    { icon: Eye, label: "Page Views", value: totalViews.toLocaleString() },
+    {
+      icon: TrendingUp,
+      label: "Total Raised",
+      value: `NPR ${dashboard.totalRaised?.toLocaleString() ?? 0}`,
+    },
+    {
+      icon: Users,
+      label: "Donors",
+      value: dashboard.totalDonors?.toLocaleString() ?? 0,
+    },
+    {
+      icon: HandHeart,
+      label: "Applicants",
+      value: dashboard.totalApplicants?.toLocaleString() ?? 0,
+    },
   ];
+  const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+
+  const [recentDonations, setRecentDonations] = useState([])
+  useEffect(() => {
+    setLoading(true);
+
+    Promise.all([
+      getRecentDonations(),
+      getVolunteerApplications(0, 5, null, "PENDING"),
+      getOrganizerCampaigns(0,5,"desc"),
+      getOrganizerDashboardStats()
+    ])
+      .then(([donations, applications, campaigns,dashboard]) => {
+        setRecentDonations(donations);
+        setApplications(applications.content);
+        setCampaigns(campaigns.content);
+        setDashboard(dashboard);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -26,7 +72,7 @@ const OrganizerOverview = () => {
         <p className="text-sm text-muted-foreground">Snapshot of your campaigns and volunteer programs.</p>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 lg:grid-cols-3 gap-3">
         {stats.map((s, i) => (
           <Card key={i}>
             <CardContent className="p-5 flex items-center gap-3">
@@ -51,7 +97,7 @@ const OrganizerOverview = () => {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockCampaigns.filter((c) => c.status === "active").map((c) => {
+            {campaigns.filter((c) => c.status === "active").map((c) => {
               const pct = Math.round((c.raised / c.goal) * 100);
               return (
                 <div key={c.id}>
@@ -78,11 +124,27 @@ const OrganizerOverview = () => {
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockDonors.slice(0, 5).map((d) => (
+            {recentDonations.slice(0, 5).map((d) => (
               <div key={d.id} className="flex items-center justify-between text-sm">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">{d.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{d.campaign}</p>
+                  <p className="font-medium text-foreground truncate">
+                    {d.donorId ? (
+                      <Link
+                        to={`/profile/${d.donorId}`}
+                        className="hover:underline"
+                      >
+                        {d.donorName}
+                      </Link>
+                    ) : (
+                      <span>{d.donorName}</span>
+                    )}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground truncate">
+                    <Link to={`/campaign/${d.campaignId}`} className="hover:underline">
+                      {d.campaignTitle}
+                    </Link>
+                  </p>
                 </div>
                 <Badge variant="secondary">NPR {d.amount.toLocaleString()}</Badge>
               </div>
@@ -98,11 +160,27 @@ const OrganizerOverview = () => {
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
-            {mockApplicants.filter((a) => a.status === "pending").map((a) => (
+            {applications.filter((a) => a.status === "PENDING").map((a) => (
               <div key={a.id} className="flex items-center justify-between border-b last:border-0 pb-2 last:pb-0">
                 <div>
-                  <p className="text-sm font-medium text-foreground">{a.name}</p>
-                  <p className="text-xs text-muted-foreground">{a.opportunity} · {a.experience}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    <Link
+                      to={`/profile/${a.volunteerId}`}
+                      className="hover:underline"
+                    >
+                      {a.fullName}
+                    </Link>
+
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <Link
+                      to={`/volunteer/${a.opportunityId}`}
+                      className="hover:underline"
+                    >
+
+                      {a.opportunityTitle}
+                    </Link>
+                  </p>
                 </div>
                 <Badge variant="outline">{a.skills.join(", ")}</Badge>
               </div>

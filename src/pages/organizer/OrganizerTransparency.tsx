@@ -29,57 +29,22 @@ import {
   FileCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { addCampaignExpenses, CampaignExpenses, getCampaignDashboardExpenses, getOrganizerCampaignSelect } from "@/services/organizerDashboard";
+import { addCampaignExpenses, addCampaignImpact, CampaignExpenses, CampaignImpact, getCampaignDashboardExpenses, getCampaignDashboardImapacts, getOrganizerCampaignSelect } from "@/services/organizerDashboard";
 import api from "@/lib/api";
+import ImageModal from "@/modal/ImageModal";
 
-
-
-type MilestoneItem = {
-  id: string;
-  campaign: string;
-  title: string;
-  target: number;
-  spent: number;
-  status: "completed" | "in-progress" | "upcoming";
-  dueDate: string;
-};
-
-type ProofDoc = {
-  id: string;
-  campaign: string;
-  type: string;
-  name: string;
-  uploadedAt: string;
-  size: string;
-};
-
-
-
-const initialMilestones: MilestoneItem[] = [
-  { id: "m1", campaign: "Clean Water for Dolakha", title: "Pipeline procurement", target: 200000, spent: 185000, status: "completed", dueDate: "2026-04-25" },
-  { id: "m2", campaign: "Clean Water for Dolakha", title: "Phase 1 installation (3 wards)", target: 150000, spent: 96000, status: "in-progress", dueDate: "2026-05-30" },
-  { id: "m3", campaign: "Clean Water for Dolakha", title: "Community handover & training", target: 100000, spent: 0, status: "upcoming", dueDate: "2026-06-20" },
-  { id: "m4", campaign: "School Rebuilding in Sindhupalchok", title: "Foundation & framing", target: 500000, spent: 452000, status: "in-progress", dueDate: "2026-05-15" },
-];
-
-const initialProofs: ProofDoc[] = [
-  { id: "p1", campaign: "Clean Water for Dolakha", type: "Site Photo", name: "ward2-pipeline.jpg", uploadedAt: "2026-04-29", size: "2.4 MB" },
-  { id: "p2", campaign: "Clean Water for Dolakha", type: "Bank Statement", name: "april-statement.pdf", uploadedAt: "2026-05-02", size: "180 KB" },
-  { id: "p3", campaign: "School Rebuilding in Sindhupalchok", type: "Audit Report", name: "q1-audit.pdf", uploadedAt: "2026-04-10", size: "640 KB" },
-];
 
 const EXPENSE_CATEGORIES = ["Materials", "Labor", "Construction", "Transport", "Food & Lodging", "Equipment", "Admin", "Other"];
 const PROOF_TYPES = ["Site Photo", "Receipt", "Bank Statement", "Audit Report", "Beneficiary List", "Field Report", "Other"];
 
 const OrganizerTransparency = () => {
   const [expenses, setExpenses] = useState<CampaignExpenses[]>([]);
-  const [milestones, setMilestones] = useState<MilestoneItem[]>(initialMilestones);
-  const [proofs, setProofs] = useState<ProofDoc[]>(initialProofs);
+  const [impacts, setImpacts] = useState<CampaignImpact[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Dialog states
   const [expenseOpen, setExpenseOpen] = useState(false);
-  const [milestoneOpen, setMilestoneOpen] = useState(false);
-  const [proofOpen, setProofOpen] = useState(false);
+  const [impactOpen, setImpactOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({
     campaignId: "",
     category: "",
@@ -89,16 +54,23 @@ const OrganizerTransparency = () => {
     fileName: "",
     file: null as File | null
   });
-  const [newMilestone, setNewMilestone] = useState({ campaign: "", title: "", target: "", dueDate: "" });
-  const [newProof, setNewProof] = useState({ campaign: "", type: "", name: "" });
+  const [newImpact, setNewImpact] = useState({
+    campaignId: "",
+    type: "",
+    fileName: "",
+    file: null as File | null,
+  });
 
   // const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
   // const totalRaised = mockCampaigns.reduce((s, c) => s + c.raised, 0);
 
   const [campaignOps, setCampaignOps] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState("all");
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [expensePage, setExpensePage] = useState(0);
+  const [expenseTotalPages, setExpenseTotalPages] = useState(0);
+
+  const [impactPage, setImpactPage] = useState(0);
+  const [impactTotalPages, setImpactTotalPages] = useState(0);
   const [direction, setDirection] = useState("desc");
   useEffect(() => {
 
@@ -109,18 +81,32 @@ const OrganizerTransparency = () => {
   }, []);
   useEffect(() => {
     getCampaignDashboardExpenses(
-      page,
-      5,
+      expensePage,
+      10,
       direction,
       selectedCampaign
     )
       .then((res) => {
         setExpenses(res.content);
-        setTotalPages(res.totalPages);
+        setExpenseTotalPages(res.totalPages);
       })
       .catch(console.error)
 
-  }, [page, direction, selectedCampaign]);
+  }, [expensePage, direction, selectedCampaign]);
+  useEffect(() => {
+    getCampaignDashboardImapacts(
+      impactPage,
+      10,
+      direction,
+      selectedCampaign
+    )
+      .then((res) => {
+        setImpacts(res.content);
+        setImpactTotalPages(res.totalPages);
+      })
+      .catch(console.error)
+
+  }, [impactPage, direction, selectedCampaign]);
 
   const previewDocument = async (
     endpoint: string,
@@ -163,7 +149,10 @@ const OrganizerTransparency = () => {
         a.click();
         return;
       }
-
+      if (mime.startsWith("image/")) {
+        setSelectedImage(url);
+        return;
+      }
       if (
         mime.startsWith("text/") ||
         ext === "txt" ||
@@ -173,12 +162,13 @@ const OrganizerTransparency = () => {
         window.open(url, "_blank");
         return;
       }
+
       toast.error("Unsupported file type");
     } catch {
       toast.error("Failed to load document");
     }
   };
-  const handleDocumentPreview = (
+  const handleExpenseDocumentPreview = (
     expenseId: string,
     fileName: string,
     contentType?: string
@@ -189,14 +179,37 @@ const OrganizerTransparency = () => {
       contentType
     );
   };
-  const handleDocumentUpload = (file: File | null) => {
+  const handleImpactDocumentPreview = (
+    impactId: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/organizer/dashboard/campaign/transparency/impact/${impactId}`,
+      fileName,
+      contentType
+    );
+  };
+  const handleExpenseDocumentUpload = (file: File | null) => {
     setNewExpense((prev) => ({
       ...prev,
       file,
     }));
   };
-  const removeDocument = () => {
+  const removeExpenseDocument = () => {
     setNewExpense((prev) => ({
+      ...prev,
+      file: null,
+    }));
+  };
+  const handleImpactDocumentUpload = (file: File | null) => {
+    setNewImpact((prev) => ({
+      ...prev,
+      file,
+    }));
+  };
+  const removeImpactDocument = () => {
+    setNewImpact((prev) => ({
       ...prev,
       file: null,
     }));
@@ -216,7 +229,7 @@ const OrganizerTransparency = () => {
     }
 
     try {
-      const response = await addCampaignExpenses({
+      await addCampaignExpenses({
         campaignId: newExpense.campaignId,
         vendor: newExpense.vendor,
         amount: newExpense.amount,
@@ -225,17 +238,14 @@ const OrganizerTransparency = () => {
         fileName: newExpense.fileName,
         date: newExpense.date,
       });
-
-
       const refreshed = await getCampaignDashboardExpenses(
         0,
         5,
         direction
-        
       );
 
       setExpenses(refreshed.content);
-      setTotalPages(refreshed.totalPages);
+      setImpactTotalPages(refreshed.totalPages);
       setNewExpense({
         campaignId: "",
         category: "",
@@ -257,47 +267,55 @@ const OrganizerTransparency = () => {
       toast.error(msg);
     }
   };
-  const addMilestone = () => {
-    if (!newMilestone.campaign || !newMilestone.title || !newMilestone.target || !newMilestone.dueDate) {
+
+  const addProof = async () => {
+    if (
+      !newImpact.campaignId ||
+      !newImpact.type ||
+      !newImpact.fileName ||
+      !newImpact.file
+    ) {
       toast.error("Please fill all required fields");
       return;
     }
-    setMilestones([
-      ...milestones,
-      { id: `m${Date.now()}`, campaign: newMilestone.campaign, title: newMilestone.title, target: Number(newMilestone.target), spent: 0, status: "upcoming", dueDate: newMilestone.dueDate },
-    ]);
-    setNewMilestone({ campaign: "", title: "", target: "", dueDate: "" });
-    setMilestoneOpen(false);
-    toast.success("Milestone added");
-  };
 
-  const addProof = () => {
-    if (!newProof.campaign || !newProof.type || !newProof.name) {
-      toast.error("Please fill all required fields");
-      return;
+    try {
+      await addCampaignImpact({
+        campaignId: newImpact.campaignId,
+        type: newImpact.type,
+        file: newImpact.file,
+        fileName: newImpact.fileName,
+      });
+      const refreshed = await getCampaignDashboardImapacts(
+        0,
+        5,
+        direction
+      );
+
+      setImpacts(refreshed.content);
+      setImpactTotalPages(refreshed.totalPages);
+      setNewImpact({
+        campaignId: "",
+        type: "",
+        fileName: "",
+        file: null,
+      });
+
+      setImpactOpen(false);
+
+      toast.success("Impact logged successfully!");
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors).join(", ")
+        : err?.message ?? "Something went wrong";
+
+      toast.error(msg);
     }
-    setProofs([
-      { id: `p${Date.now()}`, campaign: newProof.campaign, type: newProof.type, name: newProof.name, uploadedAt: new Date().toISOString().slice(0, 10), size: "120 KB" },
-      ...proofs,
-    ]);
-    setNewProof({ campaign: "", type: "", name: "" });
-    setProofOpen(false);
-    toast.success("Proof document uploaded");
   };
 
 
-  const removeProof = (id: string) => {
-    setProofs(proofs.filter((p) => p.id !== id));
-    toast.success("Document removed");
-  };
-  const advanceMilestone = (id: string) => {
-    setMilestones(milestones.map((m) => {
-      if (m.id !== id) return m;
-      const next = m.status === "upcoming" ? "in-progress" : "completed";
-      return { ...m, status: next };
-    }));
-    toast.success("Milestone status updated");
-  };
+
+
 
   return (
     <div className="space-y-6">
@@ -318,7 +336,6 @@ const OrganizerTransparency = () => {
       <Tabs defaultValue="expenses" className="w-full">
         <TabsList>
           <TabsTrigger value="expenses"><Receipt className="w-4 h-4 mr-1" /> Expenses</TabsTrigger>
-          <TabsTrigger value="milestones"><Flag className="w-4 h-4 mr-1" /> Milestones</TabsTrigger>
           <TabsTrigger value="proofs"><FileText className="w-4 h-4 mr-1" /> Proof of Impact</TabsTrigger>
         </TabsList>
 
@@ -381,7 +398,7 @@ const OrganizerTransparency = () => {
                     {newExpense.file ? (
                       <button
                         type="button"
-                        onClick={removeDocument}
+                        onClick={removeExpenseDocument}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
                       >
                         <X className="w-3 h-3" />
@@ -397,7 +414,7 @@ const OrganizerTransparency = () => {
                           accept=".pdf,.jpg,.jpeg,.png"
                           hidden
                           onChange={(e) =>
-                            handleDocumentUpload(e.target.files?.[0] || null)
+                            handleExpenseDocumentUpload(e.target.files?.[0] || null)
                           }
                         />
                       </label>
@@ -421,7 +438,7 @@ const OrganizerTransparency = () => {
                 value={selectedCampaign}
                 onValueChange={(value) => {
                   setSelectedCampaign(value);
-                  setPage(0);
+                  setExpensePage(0);
                 }}
               >
                 <SelectTrigger className="w-72">
@@ -454,7 +471,7 @@ const OrganizerTransparency = () => {
                 value={direction}
                 onValueChange={(value) => {
                   setDirection(value);
-                  setPage(0);
+                  setExpensePage(0);
                 }}
               >
                 <SelectTrigger className="w-48">
@@ -497,7 +514,7 @@ const OrganizerTransparency = () => {
                       <TableCell>
                         <Button variant="ghost" size="sm"
                           onClick={() =>
-                            handleDocumentPreview(e.id, e.fileName, e.contentType)
+                            handleExpenseDocumentPreview(e.id, e.fileName, e.contentType)
                           }>
                           <Download className="w-3 h-3 mr-1" />
                           {e.fileName}
@@ -509,24 +526,24 @@ const OrganizerTransparency = () => {
               </Table>
             </CardContent>
           </Card>
-          {totalPages > 0 && (
+          {expenseTotalPages > 0 && (
             <div className="flex justify-center items-center gap-3">
               <Button
                 variant="outline"
-                disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
+                disabled={expensePage === 0}
+                onClick={() => setExpensePage((p) => p - 1)}
               >
                 Previous
               </Button>
 
               <span className="text-sm text-muted-foreground">
-                Page {page + 1} of {totalPages}
+                Page {expensePage + 1} of {expenseTotalPages}
               </span>
 
               <Button
                 variant="outline"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={expensePage >= expenseTotalPages - 1}
+                onClick={() => setExpensePage((p) => p + 1)}
               >
                 Next
               </Button>
@@ -534,90 +551,11 @@ const OrganizerTransparency = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="milestones" className="space-y-3">
-          <div className="flex justify-end">
-            <Dialog open={milestoneOpen} onOpenChange={setMilestoneOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Add Milestone</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Add milestone</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs">Campaign</Label>
-                    <Select value={newMilestone.campaign} onValueChange={(v) => setNewMilestone({ ...newMilestone, campaign: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                      <SelectContent>{campaignOps.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Title</Label>
-                    <Input value={newMilestone.title} onChange={(e) => setNewMilestone({ ...newMilestone, title: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Budget (NPR)</Label>
-                      <Input type="number" value={newMilestone.target} onChange={(e) => setNewMilestone({ ...newMilestone, target: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Due date</Label>
-                      <Input type="date" value={newMilestone.dueDate} onChange={(e) => setNewMilestone({ ...newMilestone, dueDate: e.target.value })} />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setMilestoneOpen(false)}>Cancel</Button>
-                  <Button onClick={addMilestone}>Add Milestone</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <div className="grid gap-3">
-            {milestones.map((m) => {
-              const pct = Math.min(100, Math.round((m.spent / m.target) * 100));
-              return (
-                <Card key={m.id}>
-                  <CardContent className="p-5 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-foreground">{m.title}</p>
-                        <p className="text-xs text-muted-foreground">{m.campaign} • Due {new Date(m.dueDate).toLocaleDateString()}</p>
-                      </div>
-                      <Badge variant="outline" className={
-                        m.status === "completed" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
-                          m.status === "in-progress" ? "bg-blue-100 text-blue-700 border-blue-200" :
-                            "bg-muted text-muted-foreground"
-                      }>
-                        {m.status === "completed" && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                        {m.status === "in-progress" && <Clock className="w-3 h-3 mr-1" />}
-                        {m.status === "upcoming" && <AlertCircle className="w-3 h-3 mr-1" />}
-                        {m.status}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>NPR {m.spent.toLocaleString()} of NPR {m.target.toLocaleString()}</span>
-                        <span>{pct}%</span>
-                      </div>
-                      <Progress value={pct} />
-                    </div>
-                    {m.status !== "completed" && (
-                      <div className="flex justify-end">
-                        <Button size="sm" variant="outline" onClick={() => advanceMilestone(m.id)}>
-                          Mark as {m.status === "upcoming" ? "In Progress" : "Completed"}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
+
 
         <TabsContent value="proofs" className="space-y-3">
           <div className="flex justify-end">
-            <Dialog open={proofOpen} onOpenChange={setProofOpen}>
+            <Dialog open={impactOpen} onOpenChange={setImpactOpen}>
               <DialogTrigger asChild>
                 <Button size="sm"><Upload className="w-4 h-4 mr-1" /> Upload Proof</Button>
               </DialogTrigger>
@@ -626,33 +564,94 @@ const OrganizerTransparency = () => {
                 <div className="space-y-3">
                   <div>
                     <Label className="text-xs">Campaign</Label>
-                    <Select value={newProof.campaign} onValueChange={(v) => setNewProof({ ...newProof, campaign: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                      <SelectContent>{campaignOps.map((c) => <SelectItem key={c.id} value={c.title}>{c.title}</SelectItem>)}</SelectContent>
+                    <Select
+                      value={newImpact.campaignId}
+                      onValueChange={(v) => setNewImpact({ ...newImpact, campaignId: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select campaign" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {campaignOps.map((c) =>
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.title}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label className="text-xs">Type</Label>
-                    <Select value={newProof.type} onValueChange={(v) => setNewProof({ ...newProof, type: v })}>
+                    <Select value={newImpact.type} onValueChange={(v) => setNewImpact({ ...newImpact, type: v })}>
                       <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>{PROOF_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label className="text-xs">File name</Label>
-                    <Input value={newProof.name} placeholder="report.pdf or photo.jpg" onChange={(e) => setNewProof({ ...newProof, name: e.target.value })} />
+                    <Input value={newImpact.fileName} placeholder="report.pdf or photo.jpg" onChange={(e) => setNewImpact({ ...newImpact, fileName: e.target.value })} />
                   </div>
-                  <div className="border-2 border-dashed rounded-md p-6 text-center text-xs text-muted-foreground">
-                    <Upload className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                    Drag & drop a file here, or click to browse
+                  <div className="shrink-0">
+                    {newImpact.file ? (
+                      <button
+                        type="button"
+                        onClick={removeImpactDocument}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
+                      >
+                        <X className="w-3 h-3" />
+                        {newImpact.file.name}
+                      </button>
+                    ) : (
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer">
+                        <Upload className="w-3 h-3" />
+                        Upload
+
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          hidden
+                          onChange={(e) =>
+                            handleImpactDocumentUpload(e.target.files?.[0] || null)
+                          }
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setProofOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setImpactOpen(false)}>Cancel</Button>
                   <Button onClick={addProof}>Upload</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
+          <div>
+            <Label className="mb-2 block">
+              Order
+            </Label>
+
+            <Select
+              value={direction}
+              onValueChange={(value) => {
+                setDirection(value);
+                setImpactPage(0);
+              }}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="desc">
+                  Newest First
+                </SelectItem>
+
+                <SelectItem value="asc">
+                  Oldest First
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -663,24 +662,27 @@ const OrganizerTransparency = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Campaign</TableHead>
                     <TableHead>Uploaded</TableHead>
-                    <TableHead>Size</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {proofs.map((p) => (
+                  {impacts.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="flex items-center gap-2 font-medium">
-                        {p.type === "Site Photo" ? <ImageIcon className="w-4 h-4 text-muted-foreground" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
-                        {p.name}
+                        <Button variant="ghost" size="sm"
+                          onClick={() =>
+                            handleImpactDocumentPreview(p.id, p.fileName, p.contentType)
+                          }>
+                          <Download className="w-3 h-3 mr-1" />
+                          {p.fileName}
+                        </Button>
                       </TableCell>
                       <TableCell><Badge variant="secondary">{p.type}</Badge></TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.campaign}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{p.campaignTitle}</TableCell>
                       <TableCell className="text-sm">{new Date(p.uploadedAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.size}</TableCell>
+                      {/* <TableCell className="text-sm text-muted-foreground">{p.size}</TableCell> */}
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon"><Eye className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => removeProof(p.id)}><Trash2 className="w-4 h-4" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -688,8 +690,36 @@ const OrganizerTransparency = () => {
               </Table>
             </CardContent>
           </Card>
+          {impactTotalPages > 0 && (
+            <div className="flex justify-center items-center gap-3">
+              <Button
+                variant="outline"
+                disabled={impactPage === 0}
+                onClick={() => setImpactPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+
+              <span className="text-sm text-muted-foreground">
+                Page {impactPage + 1} of {impactTotalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                disabled={impactPage >= impactTotalPages - 1}
+                onClick={() => setImpactPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
+      <ImageModal
+        open={!!selectedImage}
+        image={selectedImage}
+        onClose={() => setSelectedImage(null)}
+      />
     </div>
   );
 };

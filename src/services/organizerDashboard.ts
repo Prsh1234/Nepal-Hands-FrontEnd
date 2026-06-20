@@ -1,12 +1,40 @@
 import api from "@/lib/api";
 
 
+export const getRecentDonations = async (
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    "/organizer/dashboard/campaign/recentDonations"
+  );
 
-
-export const getOrganizerCampaigns = async () => {
-  const res = await api.get("/organizer/dashboard/campaigns");
+  return data;
+};
+export const getOrganizerDashboardStats = async () => {
+  const res = await api.get("/organizer/dashboard/stats");
   return res.data;
 };
+
+export const getOrganizerCampaigns = async (
+  page,
+  size,
+  direction = "desc"
+) => {
+  const res = await api.get("/organizer/dashboard/campaigns",
+  
+  {
+    params: {
+      page,
+      size,
+      direction,
+    },
+  }
+  );
+  return res.data;
+};
+
+
+
 export const getOrganizerVolunteers = async () => {
   const res = await api.get("/organizer/dashboard/volunteers");
   return res.data;
@@ -194,4 +222,142 @@ export const getCampaignDashboardExpenses = async (
   );
 
   return data;
+};
+
+
+
+
+export interface CampaignImpactRequest {
+  campaignId: string;
+  type: string;
+  fileName: string;
+  file?: File | null;
+}
+export interface CampaignImpact {
+  id: string;
+  campaignId: string;
+  campaignTitle: string;
+  type: string;
+  fileName: string;
+  uploadedAt: string;
+  file?: File | null;
+  contentType?: string;
+}
+
+
+export const addCampaignImpact = async (data: CampaignImpactRequest) => {
+  const formData = new FormData();
+
+  formData.append("campaignId", String(data.campaignId));
+  formData.append("type", data.type);
+  formData.append("fileName", data.fileName);
+  if (data.file) {
+    formData.append("file", data.file);
+  }
+
+  const { data: response } = await api.post(
+    "/organizer/dashboard/campaign/transparency/impact",
+    formData
+  );
+
+  return response;
+};
+
+export const getCampaignDashboardImapacts = async (
+  page = 0,
+  size = 10,
+  direction = "desc",
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    "/organizer/dashboard/campaign/transparency/impact",
+    {
+      params: {
+        page,
+        size,
+        direction,
+        campaignId:
+          campaignId && campaignId !== "all"
+            ? campaignId
+            : undefined,
+      },
+    }
+  );
+
+  return data;
+};
+
+
+export interface DonorList {
+  id: string;
+  campaignId: string;
+  campaignTitle: string;
+  donorName: string;
+  donorId: string;
+  amount: number;
+  donatedAt: string;
+  anonymous: boolean;
+}
+
+
+export const getCampaignDonorList = async (
+  page = 0,
+  size = 10,
+  direction = "desc",
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    "/organizer/dashboard/campaign/donationList",
+    {
+      params: {
+        page,
+        size,
+        direction,
+        campaignId:
+          campaignId && campaignId !== "all"
+            ? campaignId
+            : undefined,
+      },
+    }
+  );
+
+  return data;
+};
+export const getDonationDashboard = async (
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    "/organizer/dashboard/campaign/donationDashboard",
+    {
+      params: {
+        campaignId:
+          campaignId && campaignId !== "all"
+            ? campaignId
+            : undefined,
+      },
+    }
+  );
+
+  return data;
+};
+export const exportDonationsCsv = async (
+  campaignId?: string
+) => {
+  const token = localStorage.getItem("token");
+
+  const response = await api.get(
+    `/organizer/dashboard/campaign/donations/export`,
+    {
+      params:
+        campaignId && campaignId !== "all"
+          ? { campaignId }
+          : {},
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    }
+  );
+
+  return response.data;
 };

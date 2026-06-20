@@ -20,25 +20,30 @@ const OrganizerCampaigns = () => {
   const [filter, setFilter] = useState("all");
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [direction, setDirection] = useState("desc");
+
+  const [page, setPage] = useState(0);
+
+  const [totalPages, setTotalPages] = useState(0);
   const filtered = campaigns.filter(
     (c) =>
       (filter === "all" || c.status === filter) &&
       c.title.toLowerCase().includes(q.toLowerCase())
   );
   useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const data = await getOrganizerCampaigns();
-        setCampaigns(data);
-      } catch (err) {
-        console.error("Failed to load campaigns", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCampaigns();
-  }, []);
+    setLoading(true);
+      getOrganizerCampaigns(
+        page,
+        10,
+        direction,
+      )
+        .then((res) => {
+          setCampaigns(res.content);
+          setTotalPages(res.totalPages);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+  }, [page, direction,]);
   if (loading) {
     return (
       <div className="p-6 text-muted-foreground">
@@ -118,6 +123,29 @@ const OrganizerCampaigns = () => {
           <Card><CardContent className="p-10 text-center text-muted-foreground">No campaigns match.</CardContent></Card>
         )}
       </div>
+      {totalPages > 0 && (
+        <div className="flex justify-center items-center gap-3">
+          <Button
+            variant="outline"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+
+          <span className="text-sm text-muted-foreground">
+            Page {page + 1} of {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

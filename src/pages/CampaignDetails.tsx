@@ -10,15 +10,16 @@ import {
   Loader2,
   Receipt,
   Download,
+  ImageIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getCampaignById, CampaignResponse, DonorResponse, getCampaignExpenses } from "@/services/campaignService";
+import { getCampaignById, CampaignResponse, DonorResponse, getCampaignExpenses, getCampaignImpacts } from "@/services/campaignService";
 import ImageModal from "@/modal/ImageModal";
 import { formatDateTime } from "@/lib/utils";
 import { handleEsewaCampaignPayment } from "@/services/payment";
-import { CampaignExpenses } from "@/services/organizerDashboard";
+import { CampaignExpenses, CampaignImpact } from "@/services/organizerDashboard";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ const CampaignDetails = () => {
   const [donationAmount, setDonationAmount] = useState<number | null>(0);
   const [anonymous, setAnonymous] = useState(false);
   const [expenses, setExpenses] = useState<CampaignExpenses[]>([]);
+  const [impact, setImpacts] = useState<CampaignImpact[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const progress = campaign
     ? campaign.goal > 0
@@ -60,6 +62,11 @@ const CampaignDetails = () => {
     getCampaignExpenses(id)
       .then((res) => {
         setExpenses(res);
+      })
+      .catch(console.error);
+    getCampaignImpacts(id)
+      .then((res) => {
+        setImpacts(res);
       })
       .catch(console.error);
   }, [id]);
@@ -114,10 +121,26 @@ const CampaignDetails = () => {
         window.open(url, "_blank");
         return;
       }
+      if (mime.startsWith("image/")) {
+        setSelectedImage(url);
+        return;
+      }
       toast.error("Unsupported file type");
     } catch {
       toast.error("Failed to load document");
     }
+  };
+  
+  const handleImpactDocumentPreview = (
+    impactId: string,
+    fileName: string,
+    contentType?: string
+  ) => {
+    return previewDocument(
+      `/volunteer/campaign/transparency/impacts/file/${impactId}`,
+      fileName,
+      contentType
+    );
   };
   const handleDocumentPreview = (
     expenseId: string,
@@ -328,65 +351,6 @@ const CampaignDetails = () => {
               {/* Transparency Dashboard Tab */}
               <TabsContent value="transparency">
                 <div className="mt-4 space-y-6">
-                  {/* Header score + totals */}
-                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                      <div>
-                        <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
-                          <ShieldCheck size={18} className="text-primary" /> Transparency Overview
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">Every rupee tracked. Every receipt public.</p>
-                      </div>
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-medium w-fit">
-                        <ShieldCheck size={14} /> Transparency Score: {transparencyScore}%
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Raised</p>
-                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(campaign.raised)}</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Spent</p>
-                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(totalSpent)}</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Remaining</p>
-                        <p className="font-display text-lg font-semibold text-foreground">{formatNPR(remaining)}</p>
-                      </div>
-                    </div>
-                  </div> */}
-
-                  {/* Expense Breakdown */}
-                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
-                    <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <TrendingUp size={18} className="text-primary" /> Fund Allocation
-                    </h3>
-                    <div className="space-y-3">
-                      {campaign.expenses.map((expense, i) => (
-                        <div key={i}>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-foreground font-medium">{expense.category}</span>
-                            <span className="text-muted-foreground">{formatNPR(expense.amount)} ({expense.percentage}%)</span>
-                          </div>
-                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }} whileInView={{ width: `${expense.percentage}%` }}
-                              viewport={{ once: true }} transition={{ duration: 0.8, delay: i * 0.1 }}
-                              className="h-full rounded-full"
-                              style={{
-                                background: i % 2 === 0
-                                  ? "hsl(var(--primary))"
-                                  : "hsl(var(--secondary))",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div> */}
-
-
 
                   {/* Public Expense Ledger */}
                   <div className="bg-card rounded-xl p-6 shadow-card border border-border">
@@ -429,27 +393,37 @@ const CampaignDetails = () => {
                   </div>
 
                   {/* Proof Documents */}
-                  {/* <div className="bg-card rounded-xl p-6 shadow-card border border-border">
+                  <div className="bg-card rounded-xl p-6 shadow-card border border-border">
                     <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                       <FileText size={18} className="text-primary" /> Proof of Impact
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {proofs.map((p, i) => (
+                      {impact.map((p, i) => (
                         <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                           <div className="w-9 h-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                            {p.icon === "image" ? <ImageIcon size={16} /> : <FileText size={16} />}
-                          </div>
+                            {p.contentType?.startsWith("image/") ? (
+                              <ImageIcon size={16} />
+                            ) : (
+                              <FileText size={16} />
+                            )}                          </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">{p.type} • {p.size} • {new Date(p.date).toLocaleDateString()}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{p.fileName}</p>
+                            <p className="text-xs text-muted-foreground">{p.type} • {new Date(p.uploadedAt).toLocaleDateString()}</p>
                           </div>
                           <button className="text-muted-foreground hover:text-primary" aria-label="Download">
-                            <Download size={16} />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleImpactDocumentPreview(p.id, p.fileName, p.contentType)
+                              }>
+                              <Download className="w-3 h-3 mr-1" />
+                            </Button>
                           </button>
                         </div>
                       ))}
                     </div>
-                  </div> */}
+                  </div>
 
                   {/* Verification Info */}
                   <div className="bg-card rounded-xl p-6 shadow-card border border-border">
@@ -578,6 +552,7 @@ const CampaignDetails = () => {
         onClose={() => setSelectedImage(null)}
       />
       <Footer />
+      
     </div>
   );
 };

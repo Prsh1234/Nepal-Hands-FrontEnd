@@ -185,6 +185,16 @@ export const getCampaignExpenses = async (
 
   return data;
 };
+
+export const getCampaignImpacts = async (
+  campaignId?: string
+) => {
+  const { data } = await api.get(
+    `/volunteer/campaign/transparency/impacts/${campaignId}`
+  );
+
+  return data;
+};
 export const updateCampaign = async (id: number, data: CampaignRequest) => {
   const { data: response } = await api.put(`/organizer/campaign/${id}`, data);
   return response;
