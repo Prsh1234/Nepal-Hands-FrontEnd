@@ -7,6 +7,7 @@ export interface VolunteerOpportunityRequest {
   location: string;
   description: string;
   longDescription: string;
+  organizer: string;
   requiredSkills: string[];
   volunteerSpots: number;
   minimumAge: number;
@@ -49,36 +50,63 @@ export interface VolunteerUpdateResponse {
   body: string;
   date: string;
 }
+export interface Volunteers {
+  id: number;
+  volunteerId: number;
+  fullName: string;
+  opportunityId: number;
+  joinedAt: string;
+}
 export interface VolunteerOpportunityResponse {
-    id: number;
-    title: string;
-    category: string;
-    location: string;
-    description: string;
-    longDescription: string;
-    requiredSkills: string[];
-    volunteerSpots: number;
-    minimumAge: number;
-    commitmentType: string;
-    requirements: string[];
-    activities: string[];     // backend splits newlines into list
-    whyItMatters: string;
-    benefits: string[];       // backend splits newlines into list
-    startDate: string;
-    endDate: string;
-    dailyHours: number;
-    coverImage?: string;
-    images: string[];
-    contactName: string;
-    contactEmail: string;
-    contactPhone: string | null;
-    updates: VolunteerUpdateResponse[];
-    status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
-    createdAt: string;
-    updatedAt: string;
+  id: number;
+  title: string;
+  category: string;
+  location: string;
+  description: string;
+  longDescription: string;
+  requiredSkills: string[];
+  volunteerSpots: number;
+  minimumAge: number;
+  commitmentType: string;
+  requirements: string[];
+  activities: string[];     // backend splits newlines into list
+  whyItMatters: string;
+  benefits: string[];       // backend splits newlines into list
+  startDate: string;
+  endDate: string;
+  dailyHours: number;
+  coverImage?: string;
+  images: string[];
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  totalSpots: number;
+  filledSpots: number;
+  updates: VolunteerUpdateResponse[];
+  team: Volunteers[];
+  status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
+  createdAt: string;
+  updatedAt: string;
 
-  }
+}
+export interface VolunteerCardDTO {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  longDescription: string;
+  requiredSkills: string[];
+  location: string;
+  organizer: string;
+  startDate: string;
+  endDate: string;
+  totalSpots: number;
+  filledSpots: number;
+  dailyHours: number;
+  postedAt: string;
+  commitmentType: string;
 
+}
 
 export const createVolunteerOpportunity = async (data: VolunteerOpportunityRequest) => {
   const formData = new FormData();
@@ -88,6 +116,8 @@ export const createVolunteerOpportunity = async (data: VolunteerOpportunityReque
   formData.append("location", data.location);
   formData.append("description", data.description);
   formData.append("longDescription", data.longDescription);
+  formData.append("organizer", data.organizer);
+
   formData.append("requiredSkills", data.requiredSkills.join(","));
   formData.append("volunteerSpots", String(data.volunteerSpots));
   formData.append("minimumAge", String(data.minimumAge));
@@ -167,28 +197,28 @@ export const createVolunteerOpportunity = async (data: VolunteerOpportunityReque
 
   return response;
 };
+export const getOpportunities = async (params?: {
+  search?: string;
+  category?: string;
+  sort?: string;
+  page?: number;
+  size?: number;
+}) => {
+  const { data } = await api.get("/volunteer", { params });
+  return data;
+};
 
-export const getVolunteerOpportunities = async (params?: {
-    category?: string;
-    location?: string;
-    page?: number;
-    size?: number;
-  }) => {
-    const { data } = await api.get("/organizer/volunteer-opportunities", { params });
-    return data;
-  };
-  
-  // Public — no auth needed, fetches a single ACTIVE opportunity by id
-  export const getVolunteerOpportunityById = async (id: string | number) => {
-    const { data } = await api.get(`/volunteer/${id}`);
-    return data as VolunteerOpportunityResponse;
-  };
-  
-  export const updateVolunteerOpportunity = async (id: number, data: VolunteerOpportunityRequest) => {
-    const { data: response } = await api.put(`/organizer/volunteer-opportunities/${id}`, data);
-    return response;
-  };
-  
-  export const deleteVolunteerOpportunity = async (id: number) => {
-    await api.delete(`/organizer/volunteer-opportunities/${id}`);
-  };
+// Public — no auth needed, fetches a single ACTIVE opportunity by id
+export const getVolunteerOpportunityById = async (id: string | number) => {
+  const { data } = await api.get(`/volunteer/${id}`);
+  return data as VolunteerOpportunityResponse;
+};
+
+export const updateVolunteerOpportunity = async (id: number, data: VolunteerOpportunityRequest) => {
+  const { data: response } = await api.put(`/organizer/volunteer-opportunities/${id}`, data);
+  return response;
+};
+
+export const deleteVolunteerOpportunity = async (id: number) => {
+  await api.delete(`/organizer/volunteer-opportunities/${id}`);
+};

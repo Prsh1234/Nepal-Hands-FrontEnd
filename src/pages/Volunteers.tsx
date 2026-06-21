@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, act } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,19 @@ import {
   HandHelping,
   Laptop,
   Baby,
+  Home,
+  Droplets,
 } from "lucide-react";
+import { getOpportunities, VolunteerCardDTO } from "@/services/volunteerService";
+
+const CATEGORIES = [
+  { id: "TEACHING", label: "Teaching", icon: GraduationCap },
+  { id: "HEALTHCARE", label: "Healthcare", icon: Heart },
+  { id: "CONSTRUCTION", label: "Construction", icon: Home },
+  { id: "ENVIRONMENT", label: "Environment", icon: Leaf },
+  { id: "WATER", label: "Water & Sanitation", icon: Droplets },
+  { id: "COMMUNITY", label: "Community Work", icon: Users },
+];
 
 const categoryIcons: Record<string, React.ReactNode> = {
   Teaching: <GraduationCap size={16} />,
@@ -36,9 +48,6 @@ const categoryIcons: Record<string, React.ReactNode> = {
   "IT & Digital": <Laptop size={16} />,
   Childcare: <Baby size={16} />,
 };
-
-const allCategories = Array.from(new Set(volunteerOpportunities.map((v) => v.category)));
-
 type SortOption = "spots-left" | "newest" | "starting-soon";
 
 const sortLabels: Record<SortOption, string> = {
@@ -56,43 +65,46 @@ const formatDate = (dateStr: string) => {
 };
 
 const Volunteers = () => {
+  const [sort, setSort] = useState<SortOption>("starting-soon");
+  const [opportunity, setOpportunity] = useState<VolunteerCardDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>("starting-soon");
 
-  const filtered = useMemo(() => {
-    let result = [...volunteerOpportunities];
+  const [page, setPage] = useState(0);
+  const [size] = useState(9);
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (v) =>
-          v.title.toLowerCase().includes(q) ||
-          v.org.toLowerCase().includes(q) ||
-          v.location.toLowerCase().includes(q) ||
-          v.description.toLowerCase().includes(q) ||
-          v.skills.some((skill) => skill.toLowerCase().includes(q))
-      );
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
+  useEffect(() => {
+    loadOpportunities();
+  }, [search, activeCategory, sort, page]);
+
+
+
+  const loadOpportunities = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getOpportunities({
+        search: search || undefined,
+        category: activeCategory || undefined,
+        sort,
+        page,
+        size,
+      });
+
+      setOpportunity(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    if (activeCategory) {
-      result = result.filter((v) => v.category === activeCategory);
-    }
-
-    switch (sort) {
-      case "spots-left":
-        result.sort((a, b) => (b.spots - b.spotsFilled) - (a.spots - a.spotsFilled));
-        break;
-      case "newest":
-        result.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-        break;
-      case "starting-soon":
-        result.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-        break;
-    }
-
-    return result;
-  }, [search, activeCategory, sort]);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,17 +168,27 @@ const Volunteers = () => {
             >
               <SlidersHorizontal size={14} className="mr-1" /> All
             </Button>
-            {allCategories.map((cat) => (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-                className="text-xs shrink-0"
-              >
-                {categoryIcons[cat]} {cat}
-              </Button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+
+              return (
+                <Button
+                  key={cat.id}
+                  variant={activeCategory === cat.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPage(0);
+                    setActiveCategory(
+                      activeCategory === cat.id ? null : cat.id
+                    );
+                  }}
+                  className="text-xs shrink-0"
+                >
+                  <Icon size={14} className="mr-1" />
+                  {cat.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -175,11 +197,11 @@ const Volunteers = () => {
       <section className="py-10">
         <div className="container mx-auto px-4">
           <p className="text-sm text-muted-foreground mb-6">
-            {filtered.length} opportunity{filtered.length !== 1 && "s"} found
+            {opportunity.length} opportunity{opportunity.length !== 1 && "s"} found
           </p>
 
           <AnimatePresence mode="popLayout">
-            {filtered.length === 0 ? (
+            {opportunity.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
@@ -192,9 +214,9 @@ const Volunteers = () => {
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filtered.map((volunteer, i) => {
-                  const spotsLeft = volunteer.spots - volunteer.spotsFilled;
-                  const fillPercentage = (volunteer.spotsFilled / volunteer.spots) * 100;
+                {opportunity.map((volunteer, i) => {
+                  const spotsLeft = volunteer.totalSpots - volunteer.filledSpots;
+                  const fillPercentage = (volunteer.filledSpots / volunteer.totalSpots) * 100;
 
                   return (
                     <motion.div
@@ -212,18 +234,7 @@ const Volunteers = () => {
                           <span className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-accent px-3 py-1 rounded-full">
                             {categoryIcons[volunteer.category]} {volunteer.category}
                           </span>
-                          <div className="flex items-center gap-2">
-                            {volunteer.urgent && (
-                              <span className="flex items-center gap-1 text-xs text-destructive font-medium">
-                                <AlertCircle size={14} /> Urgent
-                              </span>
-                            )}
-                            {volunteer.verified && (
-                              <span className="flex items-center gap-1 text-xs text-secondary font-medium">
-                                <CheckCircle size={14} /> Verified
-                              </span>
-                            )}
-                          </div>
+
                         </div>
 
                         <Link to={`/volunteer/${volunteer.id}`}>
@@ -231,13 +242,13 @@ const Volunteers = () => {
                             {volunteer.title}
                           </h3>
                         </Link>
-                        <p className="text-sm text-muted-foreground mb-1">by {volunteer.org}</p>
+                        <p className="text-sm text-muted-foreground mb-1">by {volunteer.organizer}</p>
                         <p className="text-xs text-muted-foreground mb-4 line-clamp-2">{volunteer.description}</p>
 
                         {/* Progress bar */}
                         <div className="mb-4">
                           <div className="flex items-center justify-between text-xs mb-1.5">
-                            <span className="font-medium text-foreground">{volunteer.spotsFilled} of {volunteer.spots} volunteers</span>
+                            <span className="font-medium text-foreground">{volunteer.filledSpots} of {volunteer.totalSpots} volunteers</span>
                             <span className="text-muted-foreground">{spotsLeft} spots left</span>
                           </div>
                           <Progress value={fillPercentage} className="h-2" />
@@ -245,7 +256,7 @@ const Volunteers = () => {
 
                         {/* Skills */}
                         <div className="flex flex-wrap gap-1.5 mb-4">
-                          {volunteer.skills.slice(0, 4).map((skill) => (
+                          {volunteer.requiredSkills.slice(0, 4).map((skill) => (
                             <span
                               key={skill}
                               className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded"
@@ -253,9 +264,9 @@ const Volunteers = () => {
                               {skill}
                             </span>
                           ))}
-                          {volunteer.skills.length > 4 && (
+                          {volunteer.requiredSkills.length > 4 && (
                             <span className="text-xs text-muted-foreground px-1">
-                              +{volunteer.skills.length - 4} more
+                              +{volunteer.requiredSkills.length - 4} more
                             </span>
                           )}
                         </div>
@@ -270,10 +281,10 @@ const Volunteers = () => {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1">
-                              <Clock size={14} /> {volunteer.hoursPerDay} hrs/day
+                              <Clock size={14} /> {volunteer.dailyHours} hrs/day
                             </span>
                             <span className="flex items-center gap-1">
-                              <Users size={14} /> {volunteer.commitment}
+                              <Users size={14} /> {volunteer.commitmentType}
                             </span>
                           </div>
                         </div>

@@ -11,6 +11,10 @@ import {
   Receipt,
   Download,
   ImageIcon,
+  Droplets,
+  GraduationCap,
+  Home,
+  Leaf,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -22,6 +26,14 @@ import { handleEsewaCampaignPayment } from "@/services/payment";
 import { CampaignExpenses, CampaignImpact } from "@/services/organizerDashboard";
 import api from "@/lib/api";
 import { toast } from "sonner";
+const CATEGORIES = [
+  { id: "WATER", label: "Water & Sanitation", icon: Droplets },
+  { id: "EDUCATION", label: "Education", icon: GraduationCap },
+  { id: "HEALTH", label: "Health", icon: Heart },
+  { id: "SHELTER", label: "Shelter & Housing", icon: Home },
+  { id: "ENVIRONMENT", label: "Environment", icon: Leaf },
+  { id: "EMPOWERMENT", label: "Empowerment", icon: Users },
+];
 
 const formatNPR = (n: number) =>
   "NPR " + n.toLocaleString("en-IN");
@@ -130,7 +142,7 @@ const CampaignDetails = () => {
       toast.error("Failed to load document");
     }
   };
-  
+
   const handleImpactDocumentPreview = (
     impactId: string,
     fileName: string,
@@ -199,14 +211,24 @@ const CampaignDetails = () => {
           </Link>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs font-semibold bg-white/20 backdrop-blur px-3 py-1 rounded-full">
-                {campaign.category}
-              </span>
+              {(() => {
+                const Icon = CATEGORIES.find(
+                  (c) => c.id === campaign.category
+                )?.icon;
+
+                return (
+                  <span className="flex items-center gap-1 text-xs font-semibold bg-white/20 backdrop-blur px-3 py-1 rounded-full">
+                    {Icon && <Icon className="w-4 h-4 shrink-0" />}
+                    {campaign.category}
+                  </span>
+                );
+              })()}
               {campaign.status === "ACTIVE" && (
                 <span className="flex items-center gap-1 text-xs font-medium bg-white/20 backdrop-blur px-3 py-1 rounded-full">
                   <CheckCircle size={12} /> Active
                 </span>
               )}
+
             </div>
             <h1 className="font-display text-3xl md:text-5xl font-bold mb-3">{campaign.title}</h1>
             <p className="text-lg text-primary-foreground/85 max-w-2xl">{campaign.description}</p>
@@ -552,7 +574,7 @@ const CampaignDetails = () => {
         onClose={() => setSelectedImage(null)}
       />
       <Footer />
-      
+
     </div>
   );
 };

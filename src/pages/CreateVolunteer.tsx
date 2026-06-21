@@ -21,12 +21,12 @@ import {
 import { createVolunteerOpportunity } from "@/services/volunteerService";
 import { toast } from "sonner";
 const CATEGORIES = [
-  { id: "teaching", label: "Teaching", icon: GraduationCap },
-  { id: "healthcare", label: "Healthcare", icon: Heart },
-  { id: "construction", label: "Construction", icon: Home },
-  { id: "environment", label: "Environment", icon: Leaf },
-  { id: "water", label: "Water & Sanitation", icon: Droplets },
-  { id: "community", label: "Community Work", icon: Users },
+  { id: "TEACHING", label: "Teaching", icon: GraduationCap },
+  { id: "HEALTHCARE", label: "Healthcare", icon: Heart },
+  { id: "CONSTRUCTION", label: "Construction", icon: Home },
+  { id: "ENVIRONMENT", label: "Environment", icon: Leaf },
+  { id: "WATER", label: "Water & Sanitation", icon: Droplets },
+  { id: "COMMUNITY", label: "Community Work", icon: Users },
 ];
 
 const SKILL_OPTIONS = [
@@ -113,6 +113,7 @@ const CreateVolunteer = () => {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [longDescription, setLongDescription] = useState("");
+  const [organizer, setOrganizer] = useState("");
 
   // Step 1: Requirements
   const [skills, setSkills] = useState<string[]>([]);
@@ -232,7 +233,7 @@ const CreateVolunteer = () => {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return title.trim() && category && location.trim() && description.trim().length >= 20 && longDescription.trim().length >= 40;
+        return title.trim() && category && location.trim() && description.trim().length >= 20 && longDescription.trim().length >= 40 && organizer.trim();
       case 1:
         return skills.length > 0 && Number(spots) >= 1 && requirements.trim().length > 0;
       case 2:
@@ -284,6 +285,7 @@ const CreateVolunteer = () => {
         location,
         description,
         longDescription,
+        organizer,
         requiredSkills: skills,
         volunteerSpots: Number(spots),
         minimumAge: Number(ageMin),
@@ -455,7 +457,7 @@ const CreateVolunteer = () => {
 
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Long Description *</label>
+                    <label className="text-sm font-semibold text-foreground">Full Description *</label>
                     <Textarea
                       placeholder="Describe the volunteer opportunity, what volunteers will do, and its impact..."
                       value={longDescription}
@@ -465,6 +467,19 @@ const CreateVolunteer = () => {
                     />
                     <p className="text-xs text-muted-foreground">
                       {longDescription.length} characters (minimum 40)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Organizer *</label>
+                    <Textarea
+                      placeholder="Who organized the volunteer opportunity?"
+                      value={organizer}
+                      onChange={(e) => setOrganizer(e.target.value)}
+                      rows={5}
+                      className="min-h-[120px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {organizer.length} characters (minimum 40)
                     </p>
                   </div>
                 </>
@@ -1101,9 +1116,10 @@ const CreateVolunteer = () => {
 
                     <p className="text-sm text-muted-foreground">{description}</p>
                     <p className="text-sm text-muted-foreground">{longDescription}</p>
+                    <p className="text-sm text-muted-foreground">{organizer}</p>
 
 
-                    
+
 
                     <div className="border-t border-border pt-4 space-y-3">
                       <div className="grid grid-cols-2 gap-4 text-sm">

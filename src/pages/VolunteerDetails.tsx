@@ -18,7 +18,7 @@ import { useParams, Link } from "react-router-dom";
 import { getVolunteerOpportunityById, VolunteerOpportunityResponse } from "@/services/volunteerService";
 import { Loader2 } from "lucide-react";
 import ImageModal from "@/modal/ImageModal";
-import { formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { applyForVolunteer, getApplicationStatus, getUserData } from "@/services/userService";
 import { toast } from "sonner";
 
@@ -119,8 +119,8 @@ const VolunteerDetails = () => {
   }
 
   // Derived values — now from API response shape
-  const spotsRemaining = opportunity.volunteerSpots; // adjust if backend returns spotsFilled separately
-  const fillPercentage = 0;                          // adjust when you add applications count to response
+  const spotsLeft = opportunity.totalSpots - opportunity.filledSpots;
+  const fillPercentage = (opportunity.filledSpots / opportunity.totalSpots) * 100;
 
   const daysUntilStart = Math.max(0, Math.ceil(
     (new Date(opportunity.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
@@ -173,7 +173,7 @@ const VolunteerDetails = () => {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: Users, label: "Spots", value: `${opportunity.volunteerSpots} total` },
+                { icon: Users, label: "Spots", value: `${spotsLeft} of ${opportunity.volunteerSpots} total` },
                 { icon: Clock, label: "Hours/Day", value: `${opportunity.dailyHours}h` },
                 { icon: Briefcase, label: "Commitment", value: opportunity.commitmentType },
                 { icon: Calendar, label: "Starts In", value: `${daysUntilStart} days` },
@@ -185,14 +185,39 @@ const VolunteerDetails = () => {
                 </div>
               ))}
             </div>
-
+            {/* Spots Progress */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="bg-card rounded-xl p-6 shadow-card border border-border">
+              <div className="flex items-end justify-between mb-2">
+                <div>
+                  <p className="text-2xl font-bold text-foreground font-display">{opportunity.filledSpots} volunteers</p>
+                  <p className="text-sm text-muted-foreground">joined of {opportunity.totalSpots} spots needed</p>
+                </div>
+                <p className="text-2xl font-bold text-primary">{fillPercentage}%</p>
+              </div>
+              <Progress value={fillPercentage} className="h-3 mb-4" />
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1"><Users size={14} /> {spotsLeft} spots remaining</span>
+                <span className="flex items-center gap-1"><Clock size={14} /> {daysUntilStart} days until start</span>
+                <button className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors">
+                  <Share2 size={14} /> Share
+                </button>
+              </div>
+              <Link
+                to={`/volunteer/${opportunity.id}/chat`}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-2 text-sm font-semibold text-primary"
+              >
+                <Users size={16} /> Open Group Chat
+                <ChevronRight size={14} />
+              </Link>
+            </motion.div>
             {/* About Tab content */}
             <Tabs defaultValue="about" className="w-full">
               <TabsList className="w-full grid grid-cols-4 bg-muted">
                 <TabsTrigger value="about">About</TabsTrigger>
                 <TabsTrigger value="requirements">Requirements</TabsTrigger>
                 {/* <TabsTrigger value="team">Team ({opportunity.volunteers.length})</TabsTrigger> */}
-                <TabsTrigger value="team">Team </TabsTrigger>
+                <TabsTrigger value="team">Team ({opportunity.team.length}) </TabsTrigger>
                 <TabsTrigger value="updates">Updates({opportunity.updates?.length || 0})</TabsTrigger>
               </TabsList>
 
@@ -345,7 +370,43 @@ const VolunteerDetails = () => {
                 </motion.div>
               </TabsContent>
 
-
+              {/* Team */}
+              <TabsContent value="team">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="bg-card rounded-xl p-6 shadow-card border border-border mt-4">
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Users size={18} className="text-primary" /> Current Volunteers
+                  </h3>
+                  <div className="space-y-3">
+                    {opportunity.team.map((vol, i) => (
+                      <motion.div key={i}
+                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-bold text-primary">
+                              {vol.fullName.split(" ").map(n => n[0]).join("")}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground text-sm">{vol.fullName}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Joined {formatDate(vol.joinedAt)}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                  {spotsLeft > 0 && (
+                    <div className="mt-4 p-4 bg-accent/50 rounded-lg border border-primary/20 text-center">
+                      <p className="text-sm text-foreground font-medium">
+                        {spotsLeft} more volunteer{spotsLeft > 1 ? "s" : ""} needed!
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Apply using the form on the right →</p>
+                    </div>
+                  )}
+                </motion.div>
+              </TabsContent>
 
               {/* Updates */}
               <TabsContent value="updates">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,10 @@ import {
   Home,
   Sparkles,
   ArrowUpDown,
+  Leaf,
 } from "lucide-react";
+import { CampaignCardDTO, getCampaigns } from "@/services/campaignService";
+import { formatDate } from "@/lib/utils";
 
 const formatNPR = (n: number) => "NPR " + n.toLocaleString("en-IN");
 
@@ -32,53 +35,63 @@ const categoryIcons: Record<string, React.ReactNode> = {
   Housing: <Home size={16} />,
   Empowerment: <Sparkles size={16} />,
 };
+const CATEGORIES = [
+  { id: "WATER", label: "Water & Sanitation", icon: Droplets },
+  { id: "EDUCATION", label: "Education", icon: GraduationCap },
+  { id: "HEALTH", label: "Health", icon: Heart },
+  { id: "SHELTER", label: "Shelter & Housing", icon: Home },
+  { id: "ENVIRONMENT", label: "Environment", icon: Leaf },
+  { id: "EMPOWERMENT", label: "Empowerment", icon: Users },
+];
 
-const allCategories = Array.from(new Set(campaigns.map((c) => c.category)));
 
-type SortOption = "progress" | "newest" | "ending-soon";
+type SortOption = "newest" | "ending-soon";
 
 const sortLabels: Record<SortOption, string> = {
-  progress: "Most Funded",
   newest: "Newest",
   "ending-soon": "Ending Soon",
 };
 
 const Campaigns = () => {
+  const [sort, setSort] = useState<SortOption>("ending-soon");
+  const [campaigns, setCampaigns] = useState<CampaignCardDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>("ending-soon");
 
-  const filtered = useMemo(() => {
-    let result = [...campaigns];
+  const [page, setPage] = useState(0);
+  const [size] = useState(9);
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.org.toLowerCase().includes(q) ||
-          c.description.toLowerCase().includes(q)
-      );
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  useEffect(() => {
+    loadCampaigns();
+  }, [search, activeCategory, sort, page]);
+
+
+
+  const loadCampaigns = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getCampaigns({
+        search: search || undefined,
+        category: activeCategory || undefined,
+        sort,
+        page,
+        size,
+      });
+
+      setCampaigns(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    if (activeCategory) {
-      result = result.filter((c) => c.category === activeCategory);
-    }
-
-    switch (sort) {
-      case "progress":
-        result.sort((a, b) => b.progress - a.progress);
-        break;
-      case "newest":
-        result.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-        break;
-      case "ending-soon":
-        result.sort((a, b) => a.daysLeft - b.daysLeft);
-        break;
-    }
-
-    return result;
-  }, [search, activeCategory, sort]);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,7 +125,10 @@ const Campaigns = () => {
               <Input
                 placeholder="Search campaigns..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setPage(0);
+                  setSearch(e.target.value);
+                }}
                 className="pl-10"
               />
             </div>
@@ -122,7 +138,10 @@ const Campaigns = () => {
                   key={key}
                   variant={sort === key ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSort(key)}
+                  onClick={() => {
+                    setPage(0);
+                    setSort(key);
+                  }}
                   className="text-xs"
                 >
                   <ArrowUpDown size={14} className="mr-1" />
@@ -142,30 +161,43 @@ const Campaigns = () => {
             >
               <SlidersHorizontal size={14} className="mr-1" /> All
             </Button>
-            {allCategories.map((cat) => (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-                className="text-xs shrink-0"
-              >
-                {categoryIcons[cat]} {cat}
-              </Button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+
+              return (
+                <Button
+                  key={cat.id}
+                  variant={activeCategory === cat.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPage(0);
+                    setActiveCategory(
+                      activeCategory === cat.id ? null : cat.id
+                    );
+                  }}
+                  className="text-xs shrink-0"
+                >
+                  <Icon size={14} className="mr-1" />
+                  {cat.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
-
-      {/* Results */}
-      <section className="py-10">
+      {(() => {
+         if (loading) {
+          return <div>Loading...</div>;
+        }else{
+          return(
+            <section className="py-10">
         <div className="container mx-auto px-4">
           <p className="text-sm text-muted-foreground mb-6">
-            {filtered.length} campaign{filtered.length !== 1 && "s"} found
+            {totalElements} campaign{totalElements !== 1 && "s"} found
           </p>
 
           <AnimatePresence mode="popLayout">
-            {filtered.length === 0 ? (
+            {campaigns.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
@@ -178,7 +210,7 @@ const Campaigns = () => {
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filtered.map((campaign, i) => (
+                {campaigns.map((campaign, i) => (
                   <motion.div
                     key={campaign.id}
                     layout
@@ -194,11 +226,7 @@ const Campaigns = () => {
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-accent px-3 py-1 rounded-full">
                           {categoryIcons[campaign.category]} {campaign.category}
                         </span>
-                        {campaign.verified && (
-                          <span className="flex items-center gap-1 text-xs text-secondary font-medium">
-                            <CheckCircle size={14} /> Verified
-                          </span>
-                        )}
+
                       </div>
 
                       <Link to={`/campaign/${campaign.id}`}>
@@ -206,7 +234,7 @@ const Campaigns = () => {
                           {campaign.title}
                         </h3>
                       </Link>
-                      <p className="text-sm text-muted-foreground mb-1">by {campaign.org}</p>
+                      <p className="text-sm text-muted-foreground mb-1">by {campaign.organizer}</p>
                       <p className="text-xs text-muted-foreground mb-4 line-clamp-2">{campaign.description}</p>
 
                       <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
@@ -222,6 +250,9 @@ const Campaigns = () => {
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-4">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} /> {formatDate(campaign.postedAt)}
+                        </span>
                         <span className="flex items-center gap-1">
                           <Clock size={14} /> {campaign.daysLeft} days left
                         </span>
@@ -241,8 +272,36 @@ const Campaigns = () => {
               </div>
             )}
           </AnimatePresence>
+          <div className="flex justify-center gap-2 mt-10">
+            <Button
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+
+            <span className="flex items-center px-4">
+              Page {page + 1} of {totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
+
       </section>
+          )
+        }
+      })()}
+
+      {/* Results */}
+      
 
       <Footer />
     </div>

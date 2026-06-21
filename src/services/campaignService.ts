@@ -76,6 +76,22 @@ export interface DonorResponse {
   amount: number;
   donatedAt: string;
 }
+
+export interface CampaignCardDTO {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  goal: number;
+  totalDonors: number;
+  raised: number;
+  organizer: string;
+  daysLeft: number;
+  startDate: string;
+  donors: number;
+  progress: number;  
+  postedAt: string;
+}
 export const createCampaign = async (data: CampaignRequest) => {
   const formData = new FormData();
 
@@ -158,23 +174,23 @@ export const createCampaign = async (data: CampaignRequest) => {
 };
 
 
-export const getCampaigns = async (params?: {
-  category?: string;
-  location?: string;
-  page?: number;
-  size?: number;
-}) => {
-  const { data } = await api.get("/organizer/campaign", { params });
-  return data;
-};
 
 // Public — no auth needed, fetches a single ACTIVE opportunity by id
 export const getCampaignById = async (id: string | number) => {
-  const { data } = await api.get(`/organizer/campaign/${id}`);
+  const { data } = await api.get(`/volunteer/campaign/${id}`);
   return data as CampaignResponse;
 };
 
-
+export const getCampaigns = async (params?: {
+  search?: string;
+  category?: string;
+  sort?: string;
+  page?: number;
+  size?: number;
+}) => {
+  const { data } = await api.get("/volunteer/campaign", { params });
+  return data;
+};
 
 export const getCampaignExpenses = async (
   campaignId?: string

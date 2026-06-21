@@ -21,12 +21,12 @@ import {
 import { createCampaign } from "@/services/campaignService";
 
 const CATEGORIES = [
-  { id: "water", label: "Water & Sanitation", icon: Droplets },
-  { id: "education", label: "Education", icon: GraduationCap },
-  { id: "health", label: "Health", icon: Heart },
-  { id: "shelter", label: "Shelter & Housing", icon: Home },
-  { id: "environment", label: "Environment", icon: Leaf },
-  { id: "empowerment", label: "Empowerment", icon: Users },
+  { id: "WATER", label: "Water & Sanitation", icon: Droplets },
+  { id: "EDUCATION", label: "Education", icon: GraduationCap },
+  { id: "HEALTH", label: "Health", icon: Heart },
+  { id: "SHELTER", label: "Shelter & Housing", icon: Home },
+  { id: "ENVIRONMENT", label: "Environment", icon: Leaf },
+  { id: "EMPOWERMENT", label: "Empowerment", icon: Users },
 ];
 
 const STEPS = ["Basics", "Story", "Goal", "Media", "Schedule", "Verification", "Review"];
