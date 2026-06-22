@@ -313,8 +313,8 @@ const VolunteerChat = () => {
                                   msg.isMe
                                     ? "bg-primary text-primary-foreground border-primary rounded-tr-sm"
                                     : msg.isOrganizer
-                                    ? "bg-secondary/10 border-secondary/20 text-foreground rounded-tl-sm"
-                                    : "bg-muted/60 border-border text-foreground rounded-tl-sm"
+                                      ? "bg-secondary/10 border-secondary/20 text-foreground rounded-tl-sm"
+                                      : "bg-muted/60 border-border text-foreground rounded-tl-sm"
                                 )}
                               >
                                 {msg.text}

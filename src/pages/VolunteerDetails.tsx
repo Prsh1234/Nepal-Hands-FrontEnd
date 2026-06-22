@@ -119,8 +119,8 @@ const VolunteerDetails = () => {
   }
 
   // Derived values — now from API response shape
-  const spotsLeft = opportunity.totalSpots - opportunity.filledSpots;
-  const fillPercentage = (opportunity.filledSpots / opportunity.totalSpots) * 100;
+  const spotsLeft = opportunity.volunteerSpots - opportunity.filledSpots;
+  const fillPercentage = (opportunity.filledSpots / opportunity.volunteerSpots) * 100;
 
   const daysUntilStart = Math.max(0, Math.ceil(
     (new Date(opportunity.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
@@ -191,7 +191,7 @@ const VolunteerDetails = () => {
               <div className="flex items-end justify-between mb-2">
                 <div>
                   <p className="text-2xl font-bold text-foreground font-display">{opportunity.filledSpots} volunteers</p>
-                  <p className="text-sm text-muted-foreground">joined of {opportunity.totalSpots} spots needed</p>
+                  <p className="text-sm text-muted-foreground">joined of {opportunity.volunteerSpots} spots needed</p>
                 </div>
                 <p className="text-2xl font-bold text-primary">{fillPercentage}%</p>
               </div>

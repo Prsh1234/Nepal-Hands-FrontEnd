@@ -301,7 +301,29 @@ const Volunteers = () => {
               </div>
             )}
           </AnimatePresence>
+          <div className="flex justify-center gap-2 mt-10">
+            <Button
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+
+            <span className="flex items-center px-4">
+              Page {page + 1} of {totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
+        
       </section>
 
       <Footer />

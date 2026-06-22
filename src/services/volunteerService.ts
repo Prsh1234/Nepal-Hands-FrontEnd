@@ -52,7 +52,7 @@ export interface VolunteerUpdateResponse {
 }
 export interface Volunteers {
   id: number;
-  volunteerId: number;
+  userId: number;
   fullName: string;
   opportunityId: number;
   joinedAt: string;
@@ -80,7 +80,6 @@ export interface VolunteerOpportunityResponse {
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
-  totalSpots: number;
   filledSpots: number;
   updates: VolunteerUpdateResponse[];
   team: Volunteers[];
@@ -105,9 +104,21 @@ export interface VolunteerCardDTO {
   dailyHours: number;
   postedAt: string;
   commitmentType: string;
+  team: Volunteers[];
+}
+export interface ChatOpportunityDetailsResponse {
+  id: number;
+  organizerId: number;
+  title: string;
+  description: string;
+  location: string;
+  organizer: string;
+  startDate: string;
+  endDate: string;
+  filledSpots: number;
+  team: Volunteers[];
 
 }
-
 export const createVolunteerOpportunity = async (data: VolunteerOpportunityRequest) => {
   const formData = new FormData();
 
@@ -212,6 +223,11 @@ export const getOpportunities = async (params?: {
 export const getVolunteerOpportunityById = async (id: string | number) => {
   const { data } = await api.get(`/volunteer/${id}`);
   return data as VolunteerOpportunityResponse;
+};
+
+export const getChatOpportunityDetails = async (id: string | number) => {
+  const { data } = await api.get(`/volunteer/chat/details/${id}`);
+  return data as ChatOpportunityDetailsResponse;
 };
 
 export const updateVolunteerOpportunity = async (id: number, data: VolunteerOpportunityRequest) => {

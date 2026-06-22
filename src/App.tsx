@@ -41,6 +41,8 @@ import AdminKyc from "./pages/admin/AdminKyc.tsx";
 import AdminFlagged from "./pages/admin/AdminFlagged.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminTransactions from "./pages/admin/AdminTransactions.tsx";
+import Chat from "./pages/Chat.tsx";
+import GroupChat from "./pages/GroupChat.tsx";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +74,8 @@ const App = () => (
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/oauth2/redirect" element={<OAuthRedirect />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/volunteer/chat/:id" element={<Chat />} />
+          <Route path="/groupChat/:id" element={<GroupChat />} />
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminOverview />} />
