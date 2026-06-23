@@ -1,85 +1,43 @@
 import api from "@/lib/api";
 import { Client } from "@stomp/stompjs";
 
-let stompClient = null;
+let stompClient: InstanceType<typeof Client> | null = null;
 
+// ─── WebSocket ────────────────────────────────────────────────────────────────
 
-export const connectWebSocket = (onMessageReceived) => {
-
+export const connectWebSocket = (onMessageReceived: (msg: any) => void) => {
     const token = localStorage.getItem("AUTH_TOKEN");
 
-    const socket = new WebSocket("ws://localhost:8080/ws");
-
     stompClient = new Client({
-        webSocketFactory: () => socket,
-
-        connectHeaders: {
-            Authorization: `Bearer ${token}`
-        },
-
+        webSocketFactory: () => new WebSocket("ws://localhost:8080/ws"),
+        connectHeaders: { Authorization: `Bearer ${token}` },
         onConnect: () => {
-
-            stompClient.subscribe(
-                "/user/queue/messages",
-                (message) => {
-                    console.log("Received message:", message.body);
-                    onMessageReceived(JSON.parse(message.body));
-                }
-            );
-        }
+            stompClient!.subscribe("/user/queue/messages", (message) => {
+                onMessageReceived(JSON.parse(message.body));
+            });
+        },
     });
 
     stompClient.activate();
 };
 
-export const sendMessage = (message) => {
-
-    stompClient.publish({
-        destination: "/app/private-message",
-        body: JSON.stringify(message)
-    });
-};
-
-export const connectRoomWebSocket = (opportunityId, onMessageReceived) => {
-
+export const connectRoomWebSocket = (
+    opportunityId: number | string,
+    onMessageReceived: (msg: any) => void
+) => {
     const token = localStorage.getItem("AUTH_TOKEN");
 
-    const socket = new WebSocket("ws://localhost:8080/ws");
-
     stompClient = new Client({
-        webSocketFactory: () => socket,
-
-        connectHeaders: {
-            Authorization: `Bearer ${token}`
-        },
-
+        webSocketFactory: () => new WebSocket("ws://localhost:8080/ws"),
+        connectHeaders: { Authorization: `Bearer ${token}` },
         onConnect: () => {
-
-            stompClient.subscribe(
-                `/topic/room.${opportunityId}`,
-                (msg) => {
-                    const message = JSON.parse(msg.body);
-                    onMessageReceived(message);
-                }
-            );
-        }
+            stompClient!.subscribe(`/topic/room.${opportunityId}`, (msg) => {
+                onMessageReceived(JSON.parse(msg.body));
+            });
+        },
     });
 
     stompClient.activate();
-};
-
-export const sendGroupMessage = (message) => {
-
-    stompClient.publish({
-        destination: "/app/group.send",
-        body: JSON.stringify({
-            opportunityId: message.opportunityId,
-            senderId: message.senderId,
-            senderName: message.senderName,
-            content: message.content,
-            sentAt: new Date().toISOString()
-        })
-    });
 };
 
 export const disconnectWebSocket = () => {
@@ -89,20 +47,63 @@ export const disconnectWebSocket = () => {
     }
 };
 
+// ─── Text message (WebSocket) ─────────────────────────────────────────────────
 
-export const getMessages = async (
-  opportunityId: number | string,
-  page: number,
-  size: number
-) => {
-  const { data } = await api.get(`/volunteer/chat/loadChats/${opportunityId}`, {
-    params: {
-      page,
-      size,
-    },
-  });
-
-  return data;
+export const sendGroupMessage = (message: {
+    opportunityId: number;
+    senderId: number;
+    senderName: string;
+    content: string;
+}) => {
+    stompClient!.publish({
+        destination: "/app/group.send",
+        body: JSON.stringify({
+            ...message,
+            sentAt: new Date().toISOString(),
+            fileUrl: null,
+        }),
+    });
 };
 
+// ─── File message (REST → backend saves + broadcasts via WebSocket) ───────────
+
+export const sendFileMessage = async (
+    file: File,
+    opportunityId: number,
+    senderId: number,
+    senderName: string
+): Promise<void> => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("opportunityId", String(opportunityId));
+    form.append("senderId", String(senderId));
+    form.append("senderName", senderName);
+
+    // Axios throws on non-2xx — no need to check res.ok
+    await api.post("/chat/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
+};
+
+// ─── Private message ──────────────────────────────────────────────────────────
+
+export const sendMessage = (message: any) => {
+    stompClient!.publish({
+        destination: "/app/private-message",
+        body: JSON.stringify(message),
+    });
+};
+
+// ─── Load paginated messages ──────────────────────────────────────────────────
+
+export const getMessages = async (
+    opportunityId: number | string,
+    page: number,
+    size: number
+) => {
+    const { data } = await api.get(`/volunteer/chat/loadChats/${opportunityId}`, {
+        params: { page, size },
+    });
+    return data;
+};
 // "typescript": "^6.0.3",

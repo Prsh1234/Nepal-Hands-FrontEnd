@@ -6,6 +6,9 @@ import {
     ArrowLeft, Send, Paperclip, Smile, Users,
     MapPin, Calendar, MoreVertical, Image as ImageIcon,
     CheckCheck,
+    FileType,
+    FileText,
+    X,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -14,8 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ChatOpportunityDetailsResponse, getChatOpportunityDetails } from "@/services/volunteerService";
-import { connectRoomWebSocket, disconnectWebSocket, getMessages, sendGroupMessage } from "@/services/chatService";
+import { connectRoomWebSocket, disconnectWebSocket, getMessages, sendFileMessage, sendGroupMessage } from "@/services/chatService";
 import { getUserData } from "@/services/userService";
+import ImageModal from "@/modal/ImageModal";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +39,45 @@ const colorFromName = (name: string) => {
 };
 
 const PAGE_SIZE = 30;
+// ─── File attachment renderer (reused in bubble + preview) ───────────────────
+
+const FileAttachment = ({
+    src,
+    fileType,
+    fileName,
+    isDataUri = false,
+    onImageClick,
+}: {
+    src: string;
+    fileType: string;
+    fileName?: string;
+    isDataUri?: boolean;
+    onImageClick?: (href: string) => void;
+}) => {
+    const href = isDataUri ? src : `data:${fileType};base64,${src}`;
+
+    if (fileType.startsWith("image/")) {
+        return (
+            <img
+                src={href}
+                alt="attachment"
+                onClick={() => onImageClick?.(href)}
+                className="mt-2 max-w-[240px] max-h-[200px] rounded-lg object-contain border border-border cursor-zoom-in"
+            />
+        );
+    }
+
+    return (
+
+        <a href={href}
+            download={fileName ?? "attachment"}
+            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs hover:bg-background transition-colors"
+        >
+            <FileText className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate max-w-[180px]">{fileName ?? "Download attachment"}</span>
+        </a>
+    );
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -48,6 +91,9 @@ const Chat = () => {
     const [draft, setDraft] = useState("");
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);  // object URL for preview
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // ── Refs ──
     // This div IS the scrollable container — no Radix ScrollArea involved
@@ -60,6 +106,26 @@ const Chat = () => {
     }, [id, user, opportunity]);
     // Keep refs in sync with state so scroll handler never reads stale values
     useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+    // ── File selection ──
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selected = e.target.files?.[0];
+        if (!selected) return;
+
+        // Revoke previous object URL to avoid memory leaks
+        if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+
+        setFile(selected);
+        setFilePreviewUrl(URL.createObjectURL(selected));
+        e.target.value = "";
+    };
+
+    const clearFile = () => {
+        if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+        setFile(null);
+        setFilePreviewUrl(null);
+    };
+
 
     // ── Scroll helpers ──
 
@@ -170,8 +236,11 @@ const Chat = () => {
                 senderName: msg.senderId === opportunity?.organizerId
                     ? opportunity?.organizer
                     : msg.senderName,
-                content: msg.content,
+                content: msg?.content,
                 sentAt: new Date(msg.sentAt),
+                file: msg.file,
+                fileType: msg.fileType,
+                fileName: msg.fileName,
             }]);
         });
 
@@ -186,16 +255,35 @@ const Chat = () => {
 
     // ── Send ──
 
-    const handleSend = () => {
-        if (!draft.trim() || !user) return;
-        sendGroupMessage({
-            opportunityId: Number(id),
-            senderId: user.id,
-            senderName: `${user.firstName} ${user.lastName}`,
-            content: draft,
-            sentAt: new Date().toISOString().replace("Z", ""),
-        });
-        setDraft("");
+    const handleSend = async () => {
+        if ((!draft.trim() && !file) || !user) return;
+
+        // ── File: REST upload → backend saves to DB + broadcasts via WebSocket ──
+        if (file) {
+            try {
+                await sendFileMessage(
+                    file,
+                    Number(id),
+                    user.id,
+                    `${user.firstName} ${user.lastName}`
+                );
+            } catch (err) {
+                console.error("File upload failed:", err);
+            }
+            clearFile();
+
+        }
+
+        // ── Text: straight through WebSocket ──
+        if (draft.trim()) {
+            sendGroupMessage({
+                opportunityId: Number(id),
+                senderId: user.id,
+                senderName: `${user.firstName} ${user.lastName}`,
+                content: draft,
+            });
+            setDraft("");
+        }
     };
 
     // ── Derived data ──
@@ -204,9 +292,13 @@ const Chat = () => {
         id: m.id ?? `${m.senderId}-${m.sentAt}`,
         author: m.senderName,
         text: m.content,
+        file: m.file ?? null,
+        fileType: m.fileType ?? null,
+        fileName: m.fileName ?? null,   // ← add
         date: new Date(m.sentAt),
         isMe: m.senderId === user?.id,
     })), [messages, user]);
+
 
     const grouped = useMemo(() => {
         const groups: Record<string, typeof normalizedMessages> = {};
@@ -317,37 +409,103 @@ const Chat = () => {
                                                             {format(msg.date, "p")}
                                                         </span>
                                                     </div>
-                                                    <div
-                                                        className={cn(
+                                                    {/* text bubble — only rendered when there's text */}
+                                                    {msg.text && (
+                                                        <div className={cn(
                                                             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed border",
                                                             msg.isMe
                                                                 ? "bg-primary text-primary-foreground border-primary rounded-tr-sm"
-                                                                :"bg-muted/60 border-border text-foreground rounded-tl-sm"
-                                                        )}
-                                                    >
-                                                        {msg.text}
-                                                    </div>
-                                                    {msg.isMe && (
-                                                        <div className="flex justify-end mt-1">
-                                                            <CheckCheck className="h-3 w-3 text-secondary" />
+                                                                : "bg-muted/60 border-border text-foreground rounded-tl-sm"
+                                                        )}>
+                                                            {msg.text}
                                                         </div>
                                                     )}
+
+                                                    {/* attachment — rendered outside the bubble, no colored background */}
+                                                    {msg.file && msg.fileType && (
+                                                        <FileAttachment
+                                                            src={msg.file}
+                                                            fileType={msg.fileType}
+                                                            fileName={msg.fileName}
+                                                            isDataUri={false}
+                                                            onImageClick={setSelectedImage}
+                                                        />
+                                                    )}
+
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 ))}
                             </div>
+                            {/* ── File preview strip (shown after selection, before send) ── */}
+                            {file && filePreviewUrl && (
+                                <div className="border-t border-border px-3 pt-3 bg-card">
+                                    <div className="relative inline-block">
+                                        {file.type.startsWith("image/") ? (
+                                            <img
+                                                src={filePreviewUrl}
+                                                alt="preview"
+                                                className="h-24 w-24 rounded-lg object-cover border border-border"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-xs">
+                                                <FileText className="h-4 w-4 text-primary shrink-0" />
+                                                <span className="truncate max-w-[160px]">{file.name}</span>
+                                            </div>
+                                        )}
+                                        {/* Remove button */}
+                                        <button
+                                            onClick={clearFile}
+                                            className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Composer */}
                             <div className="border-t border-border p-3 bg-card">
                                 <div className="flex items-end gap-2">
-                                    <Button variant="ghost" size="icon" className="shrink-0" aria-label="Attach">
-                                        <Paperclip className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="shrink-0" aria-label="Image">
-                                        <ImageIcon className="h-4 w-4" />
-                                    </Button>
+                                    <label>
+                                        <Button
+                                            asChild
+                                            variant="ghost"
+                                            size="icon"
+                                            className="shrink-0"
+                                        >
+                                            <span>
+                                                <Paperclip className="h-4 w-4" />
+                                            </span>
+                                        </Button>
+
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            hidden
+                                            onChange={handleFileUpload}
+                                        />
+                                    </label>
+                                    <label>
+                                        <Button
+                                            asChild
+                                            variant="ghost"
+                                            size="icon"
+                                            className="shrink-0"
+                                        >
+                                            <span>
+                                                <ImageIcon className="h-4 w-4" />
+                                            </span>
+                                        </Button>
+
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            hidden
+                                            onChange={handleFileUpload}
+                                        />
+                                    </label>
                                     <Input
                                         value={draft}
                                         onChange={(e) => setDraft(e.target.value)}
@@ -360,10 +518,7 @@ const Chat = () => {
                                         placeholder="Write a message…"
                                         className="flex-1"
                                     />
-                                    <Button variant="ghost" size="icon" className="shrink-0" aria-label="Emoji">
-                                        <Smile className="h-4 w-4" />
-                                    </Button>
-                                    <Button onClick={handleSend} disabled={!draft.trim()} className="shrink-0">
+                                    <Button onClick={handleSend} disabled={!draft.trim() && !file} className="shrink-0">
                                         <Send className="h-4 w-4 mr-1" /> Send
                                     </Button>
                                 </div>
@@ -438,7 +593,12 @@ const Chat = () => {
                     </div>
                 </motion.div>
             </main>
-        </div>
+            <ImageModal
+                open={!!selectedImage}
+                image={selectedImage}
+                onClose={() => setSelectedImage(null)}
+            />
+        </div >
     );
 };
 
