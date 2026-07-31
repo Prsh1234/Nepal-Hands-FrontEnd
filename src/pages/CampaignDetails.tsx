@@ -60,6 +60,12 @@ const CampaignDetails = () => {
       (1000 * 60 * 60 * 24)
     )
     : 0;
+  const goalReached = campaign?.raised >= campaign?.goal;
+  const campaignEnded = daysLeft <= 0;
+  const campaignClosed = campaign?.status === "CLOSED";
+  const campaignCompleted = campaign?.status === "COMPLETED";
+
+  const donationDisabled = campaignClosed || campaignEnded || campaignCompleted;
   useEffect(() => {
     if (!id) return; setLoading(true);
     getCampaignById(id)
@@ -478,6 +484,63 @@ const CampaignDetails = () => {
           <div className="relative self-start">
             <div className="sticky top-24 space-y-6">
               {/* Donation Form */}
+              {campaignClosed ? (
+                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-6 w-6 text-red-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-red-800">
+                        Campaign Closed
+                      </h3>
+                      <p className="mt-1 text-sm text-red-700">
+                        This campaign has been closed and no longer accepts donations.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : goalReached ? (
+                <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-green-800">
+                        Funding Goal Successfully Reached 🎉
+                      </h3>
+                      <p className="mt-1 text-sm text-green-700">
+                        This campaign has achieved its required funding target.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : campaignCompleted ? (
+                <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-green-800">
+                        Campaign Has been completed🎉
+                      </h3>
+                      <p className="mt-1 text-sm text-green-700">
+                        This campaign has achieved its required funding target.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : campaignEnded ? (
+                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-6 w-6 text-amber-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-amber-800">
+                        Campaign Duration Has Ended
+                      </h3>
+                      <p className="mt-1 text-sm text-amber-700">
+                        The fundraising period has ended.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 className="bg-card rounded-xl p-6 shadow-card border border-border"
               >
@@ -488,12 +551,14 @@ const CampaignDetails = () => {
                 {/* Preset amounts */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {presetAmounts.map((amt) => (
-                    <button key={amt}
+                    <button
+                      key={amt}
+                      disabled={donationDisabled}
                       onClick={() => setDonationAmount(Number(amt))}
                       className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${donationAmount === Number(amt)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted text-foreground border-border hover:border-primary/50"
-                        }`}
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted text-foreground border-border hover:border-primary/50"
+                        } ${donationDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       {formatNPR(amt)}
                     </button>
@@ -513,6 +578,7 @@ const CampaignDetails = () => {
                       type="number"
                       placeholder="Enter amount"
                       value={donationAmount}
+                      disabled={donationDisabled}
                       onChange={(e) => setDonationAmount(Number(e.target.value))}
                       className="text-lg font-semibold"
                     />
@@ -522,6 +588,7 @@ const CampaignDetails = () => {
                     <input
                       type="checkbox"
                       checked={anonymous}
+                      disabled={donationDisabled}
                       onChange={(e) => setAnonymous(e.target.checked)}
                       className="rounded border-border"
                     />
@@ -529,8 +596,14 @@ const CampaignDetails = () => {
                   </label>
 
 
-                  <Button className="w-full gap-2 text-base h-12" size="lg" onClick={handlePaymentClick}>
-                    <Heart size={18} /> Donate Now
+                  <Button
+                    className="w-full gap-2 text-base h-12"
+                    size="lg"
+                    disabled={donationDisabled}
+                    onClick={handlePaymentClick}
+                  >
+                    <Heart size={18} />
+                    {donationDisabled ? "Donations Closed" : "Donate Now"}
                   </Button>
 
                   <p className="text-xs text-muted-foreground text-center">

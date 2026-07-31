@@ -71,14 +71,17 @@ export const sendFileMessage = async (
     file: File,
     opportunityId: number,
     senderId: number,
-    senderName: string
+    senderName: string,
+    content:string | null
 ): Promise<void> => {
     const form = new FormData();
     form.append("file", file);
     form.append("opportunityId", String(opportunityId));
     form.append("senderId", String(senderId));
     form.append("senderName", senderName);
-
+    if (content !== null) {
+        form.append("content", content);
+    }
     // Axios throws on non-2xx — no need to check res.ok
     await api.post("/chat/upload", form, {
         headers: { "Content-Type": "multipart/form-data" },

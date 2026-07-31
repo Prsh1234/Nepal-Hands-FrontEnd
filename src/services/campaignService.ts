@@ -66,7 +66,7 @@ export interface CampaignResponse {
   images: string[];
   updates: CampaignUpdateResponse[];
   recentDonors: DonorResponse[];
-  status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
+  status: "PENDING_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED" | "COMPLETED";
   createdAt: string;
   updatedAt: string;
 }

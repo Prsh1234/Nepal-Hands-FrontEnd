@@ -9,6 +9,8 @@ import {
   Wallet,
   Settings,
   ScrollText,
+  Sparkles,
+  Send,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,11 +31,11 @@ const items = [
   { title: "Volunteer Ops", url: "/organizer/volunteers", icon: HandHeart },
   { title: "Donors", url: "/organizer/donors", icon: Users },
   { title: "Applicants", url: "/organizer/applicants", icon: UserCheck },
+  { title: "Recommendations", url: "/organizer/recommendations", icon: Sparkles },
+  { title: "Invitations", url: "/organizer/invitations", icon: Send },
   { title: "Campaign Updates", url: "/organizer/campaignUpdates", icon: Bell },
   { title: "Volunteer Updates", url: "/organizer/volunteerUpdates", icon: Bell },
   { title: "Campaign Transparency", url: "/organizer/transparency", icon: ScrollText },
-  { title: "Payouts", url: "/organizer/payouts", icon: Wallet },
-  { title: "Settings", url: "/organizer/settings", icon: Settings },
 ];
 
 export function OrganizerSidebar() {

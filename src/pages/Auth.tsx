@@ -191,6 +191,13 @@ const Auth = () => {
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {tab === "signin" ? "Sign In" : "Create Account"}
                 </Button>
+                {tab === "signin" && (
+                  <div className="text-center">
+                    <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
+                      Forgot your password?
+                    </Link>
+                  </div>
+                )}
               </form>
             </Tabs>
 

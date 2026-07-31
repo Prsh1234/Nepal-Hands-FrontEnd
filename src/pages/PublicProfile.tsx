@@ -164,31 +164,7 @@ const PublicProfile = () => {
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <Award className="w-5 h-5 text-primary" /> Impact
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total donated</span>
-                                    <span className="font-semibold">NPR {lifetimeStats.totalDonated.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Campaigns supported</span>
-                                    <span className="font-semibold">{lifetimeStats.campaignsSupported}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Volunteer hours</span>
-                                    <span className="font-semibold">{lifetimeStats.volunteerHours} hrs</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Applications</span>
-                                    <span className="font-semibold">{lifetimeStats.applications}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        
                     </div>
 
                     {/* Right column */}

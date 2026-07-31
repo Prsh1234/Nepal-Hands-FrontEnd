@@ -3,7 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, X, MessageCircle } from "lucide-react";
-import { mockApplicants } from "@/data/organizer";
 import { toast } from "sonner";
 import { approveVolunteerApplication, getOrganizerVolunteerSelect, getVolunteerApplications, rejectVolunteerApplication } from "@/services/organizerDashboard";
 import { Label } from "recharts";
@@ -24,6 +23,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   REJECTED: {
     label: "Rejected",
     className: "bg-destructive/10 text-destructive border-destructive/20",
+  },
+  COMPLETE: {
+    label: "Complete",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
   },
 };
 

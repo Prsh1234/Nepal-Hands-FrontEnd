@@ -43,6 +43,10 @@ const SKILL_OPTIONS = [
     "IT & Digital", "Photography", "Translation", "Cooking", "Driving",
     "Project Management", "Social Work", "Counseling", "Agriculture",
 ];
+const INTEREST_OPTIONS = [
+    "Education","Healthcare","Women Empowerment","Environment","Disaster Relief",
+    "Culture & Heritage","Community Development","Children","Rural Development",
+  ];
 const Profile = () => {
     const [editing, setEditing] = useState(false);
     const [profile, setProfile] = useState(null);
@@ -57,6 +61,7 @@ const Profile = () => {
 
                 setDraft(userData);
                 setProfile(userData);
+                localStorage.setItem("userId", userData.id);
             } catch (error) {
                 console.error(error);
                 toast.error("Error fetching user data");
@@ -131,7 +136,19 @@ const Profile = () => {
         }
     };
 
-
+    const toggleCause = (cause: string) => {
+        if (draft.causes.includes(cause)) {
+            setDraft({
+                ...draft,
+                skills: draft.causes.filter((s) => s !== cause),
+            });
+        } else {
+            setDraft({
+                ...draft,
+                causes: [...draft.causes, cause],
+            });
+        }
+    };
     const addCauses = () => {
         const v = causesInput.trim();
         if (!v || draft.causes.includes(v)) return;
@@ -264,31 +281,7 @@ const Profile = () => {
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <Award className="w-5 h-5 text-primary" /> Impact
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total donated</span>
-                                    <span className="font-semibold">NPR {lifetimeStats.totalDonated.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Campaigns supported</span>
-                                    <span className="font-semibold">{lifetimeStats.campaignsSupported}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Volunteer hours</span>
-                                    <span className="font-semibold">{lifetimeStats.volunteerHours} hrs</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Applications</span>
-                                    <span className="font-semibold">{lifetimeStats.applications}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        
                     </div>
 
                     {/* Right column */}
@@ -432,14 +425,26 @@ const Profile = () => {
                                         ))}
                                     </div>
                                     {editing && (
-                                        <div className="flex gap-2 mt-3">
-                                            <Input
-                                                placeholder="Add a cause"
-                                                value={causesInput}
-                                                onChange={(e) => setCausesInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCauses())}
-                                            />
-                                            <Button type="button" variant="outline" onClick={addCauses}><Plus className="w-4 h-4" /></Button>
+                                        <div className="mt-4">
+                                            <Label className="mb-2 block text-sm text-muted-foreground">
+                                                Select Causes
+                                            </Label>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {INTEREST_OPTIONS.map((cause) => (
+                                                    <button
+                                                        key={cause}
+                                                        type="button"
+                                                        onClick={() => toggleCause(cause)}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${draft.causes.includes(cause)
+                                                            ? "border-primary bg-primary/10 text-primary"
+                                                            : "border-border hover:border-primary/40 text-foreground"
+                                                            }`}
+                                                    >
+                                                        {cause}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

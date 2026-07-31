@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, isAfter, isSameDay, startOfDay, subDays } from "date-fns";
 import { motion } from "framer-motion";
 import {
@@ -31,94 +31,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  clearNotifications,
+  deleteNotification,
+} from "@/services/notification";
 type NotificationType = "approval" | "donation" | "volunteer" | "alert";
 
 interface Notification {
-  id: string;
-  type: NotificationType;
+  id: number;
+  type: string;
   title: string;
-  description: string;
-  date: Date;
+  message: string;
+  createdAt: string;
   read: boolean;
 }
-
-const now = new Date();
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "approval",
-    title: "Campaign Approved",
-    description: "Your campaign 'Rebuild Sindhupalchok School' is now live.",
-    date: new Date(now.getTime() - 1000 * 60 * 2),
-    read: false,
-  },
-  {
-    id: "2",
-    type: "donation",
-    title: "New Donation Received",
-    description: "Anjali Sharma donated NPR 5,000 to your campaign.",
-    date: new Date(now.getTime() - 1000 * 60 * 15),
-    read: false,
-  },
-  {
-    id: "3",
-    type: "volunteer",
-    title: "New Volunteer Signed Up",
-    description: "Bikash Thapa applied for 'Tree Planting Drive Pokhara'.",
-    date: new Date(now.getTime() - 1000 * 60 * 60),
-    read: false,
-  },
-  {
-    id: "4",
-    type: "donation",
-    title: "Milestone Reached",
-    description: "Your campaign hit 50% of its NPR 500,000 goal!",
-    date: new Date(now.getTime() - 1000 * 60 * 60 * 3),
-    read: true,
-  },
-  {
-    id: "5",
-    type: "alert",
-    title: "Verification Required",
-    description: "Please upload remaining documents for transparency badge.",
-    date: subDays(now, 1),
-    read: true,
-  },
-  {
-    id: "6",
-    type: "volunteer",
-    title: "Volunteer Roster Updated",
-    description: "3 new volunteers confirmed for 'Flood Relief Chitwan'.",
-    date: subDays(now, 2),
-    read: true,
-  },
-  {
-    id: "7",
-    type: "donation",
-    title: "Large Donation Received",
-    description: "Himalayan Trust donated NPR 50,000 to 'Mountain Health Camp'.",
-    date: subDays(now, 4),
-    read: true,
-  },
-  {
-    id: "8",
-    type: "approval",
-    title: "Volunteer Request Approved",
-    description: "Your 'Beach Cleanup Janakpur' opportunity is live.",
-    date: subDays(now, 7),
-    read: true,
-  },
-  {
-    id: "9",
-    type: "alert",
-    title: "Campaign Ending Soon",
-    description: "'Earthquake Relief Gorkha' has 3 days remaining.",
-    date: subDays(now, 10),
-    read: true,
-  },
-];
-
 const typeConfig: Record<NotificationType, { icon: typeof Bell; color: string; bg: string; label: string }> = {
   approval: { icon: CheckCircle2, color: "text-secondary", bg: "bg-secondary/10", label: "Approval" },
   donation: { icon: Heart, color: "text-primary", bg: "bg-primary/10", label: "Donation" },
@@ -129,11 +58,25 @@ const typeConfig: Record<NotificationType, { icon: typeof Bell; color: string; b
 type DateRange = "all" | "today" | "week" | "month" | "custom";
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<"all" | NotificationType>("all");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [customDate, setCustomDate] = useState<Date | undefined>();
+  const loadNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+  const now = new Date();
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
@@ -141,10 +84,10 @@ const Notifications = () => {
       if (readFilter === "unread" && n.read) return false;
       if (readFilter === "read" && !n.read) return false;
 
-      if (dateRange === "today" && !isSameDay(n.date, now)) return false;
-      if (dateRange === "week" && !isAfter(n.date, subDays(now, 7))) return false;
-      if (dateRange === "month" && !isAfter(n.date, subDays(now, 30))) return false;
-      if (dateRange === "custom" && customDate && !isSameDay(n.date, customDate)) return false;
+      if (dateRange === "today" && !isSameDay(new Date(n.createdAt), now)) return false;
+      if (dateRange === "week" && !isAfter(new Date(n.createdAt), subDays(now, 7))) return false;
+      if (dateRange === "month" && !isAfter(new Date(n.createdAt), subDays(now, 30))) return false;
+      if (dateRange === "custom" && customDate && !isSameDay(new Date(n.createdAt), customDate)) return false;
 
       return true;
     });
@@ -153,7 +96,7 @@ const Notifications = () => {
   const grouped = useMemo(() => {
     const groups: Record<string, Notification[]> = {};
     filtered.forEach((n) => {
-      const day = startOfDay(n.date).toISOString();
+      const day = startOfDay(new Date(n.createdAt)).toISOString();
       if (!groups[day]) groups[day] = [];
       groups[day].push(n);
     });
@@ -171,18 +114,36 @@ const Notifications = () => {
     return format(d, "EEEE, MMMM d");
   };
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    await markAllNotificationsRead();
+    loadNotifications();
+  };
 
-  const markRead = (id: string) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+  const markRead = async (id: number) => {
+    await markNotificationRead(id);
+    loadNotifications();
+  };
+
+  const remove = async (id: number) => {
+    await deleteNotification(id);
+    loadNotifications();
+  };
+
+  const clearAll = async () => {
+    await clearNotifications();
+    loadNotifications();
+  };
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="container mx-auto pt-24">
+          Loading notifications...
+        </main>
+        <Footer />
+      </div>
     );
-
-  const remove = (id: string) =>
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-
-  const clearAll = () => setNotifications([]);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -317,7 +278,13 @@ const Notifications = () => {
                   </h2>
                   <ul className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
                     {items.map((n) => {
-                      const cfg = typeConfig[n.type];
+                      const cfg =
+                      typeConfig[n.type as NotificationType] ?? {
+                        icon: Bell,
+                        color: "text-primary",
+                        bg: "bg-primary/10",
+                        label: "General",
+                      };
                       const Icon = cfg.icon;
                       return (
                         <li
@@ -345,10 +312,10 @@ const Notifications = () => {
                                   )}
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                  {n.description}
+                                  {n.message}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1.5">
-                                  {format(n.date, "p · MMM d, yyyy")}
+                                {format(new Date(n.createdAt), "p · MMM d, yyyy")}
                                 </p>
                               </div>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

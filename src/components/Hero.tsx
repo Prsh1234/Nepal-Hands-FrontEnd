@@ -56,23 +56,6 @@ const Hero = () => {
                 Explore Campaigns
               </Button>
             </div>
-
-            <div className="flex items-center gap-6 mt-10">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 rounded-full bg-primary/30 border-2 border-background/20 flex items-center justify-center text-xs font-bold text-primary-foreground"
-                  >
-                    {String.fromCharCode(64 + i)}
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm text-primary-foreground/60">
-                <span className="font-semibold text-primary-foreground">2,800+</span> volunteers
-                already making a difference
-              </p>
-            </div>
           </motion.div>
         </div>
       </div>

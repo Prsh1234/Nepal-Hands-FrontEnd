@@ -361,3 +361,41 @@ export const exportDonationsCsv = async (
 
   return response.data;
 };
+
+
+
+
+
+export const updateCampaignStatus = async (
+  id: string,
+  status: "CLOSED" | "COMPLETED"
+) => {
+  const response = await api.put(
+      `/organizer/dashboard/campaigns/${id}/status`,
+      null,
+      {
+          params: {
+              status
+          }
+      }
+  );
+
+  return response.data;
+};
+
+export const updateVolunteerOpportunityStatus = async (
+  id: string,
+  status: "CLOSED" | "COMPLETED"
+) => {
+  const { data } = await api.put(
+    `/organizer/dashboard/volunteers/${id}/status`,
+    null,
+    {
+      params: {
+        status,
+      },
+    }
+  );
+
+  return data;
+};

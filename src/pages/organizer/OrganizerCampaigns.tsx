@@ -5,13 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { BarChart3, Edit, Plus, Users, Eye, Clock, Calendar, Search } from "lucide-react";
-import { getOrganizerCampaigns } from "@/services/organizerDashboard";
+import { getOrganizerCampaigns, updateCampaignStatus } from "@/services/organizerDashboard";
+import {
+  BarChart3, Edit, Plus, Users, Eye, Clock, Calendar, Search,
+  MoreHorizontal, CheckCircle2, PauseCircle, PlayCircle, XCircle,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active: { label: "Active", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   pending: { label: "Pending Review", className: "bg-muted text-muted-foreground border-border" },
-  completed: { label: "Completed", className: "bg-primary/10 text-primary border-primary/20" },
+  closed: { label: "Closed", className: "bg-primary/10 text-primary border-primary/20" },
+  completed: { label: "Completed", className: "bg-green-100 text-emerald-700 border-emerald-200" },
   rejected: { label: "Rejected", className: "bg-amber-100 text-amber-700 border-amber-200" },
 };
 
@@ -21,6 +34,7 @@ const OrganizerCampaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [direction, setDirection] = useState("desc");
+  const [pending, setPending] = useState<{ id: string; action: "complete" | "close" } | null>(null);
 
   const [page, setPage] = useState(0);
 
@@ -44,6 +58,46 @@ const OrganizerCampaigns = () => {
         .catch(console.error)
         .finally(() => setLoading(false));
   }, [page, direction,]);
+
+  const confirmPending = () => {
+    if (!pending) return;
+    const c = campaigns.find((x) => x.id === pending.id);
+    if (!c) return;
+    if (pending.action === "complete") {
+      updateStatus(pending.id, "COMPLETED");
+      toast.success(`"${c.title}" marked as completed.`);
+    } else {
+      updateStatus(pending.id, "CLOSED");
+      toast.success(`"${c.title}" has been closed.`);
+    }
+    setPending(null);
+  };
+
+
+  const updateStatus = async (
+    id: string,
+    status: "COMPLETED" | "CLOSED"
+) => {
+
+  try {
+    await updateCampaignStatus(id, status);
+
+    setCampaigns(prev =>
+      prev.map(campaign =>
+        campaign.id === id
+          ? {
+              ...campaign,
+              status
+            }
+          : campaign
+      )
+    );
+
+    toast.success("Status updated");
+  } catch (error) {
+    toast.error("Failed");
+  }
+};
   if (loading) {
     return (
       <div className="p-6 text-muted-foreground">
@@ -80,7 +134,8 @@ const OrganizerCampaigns = () => {
       <div className="space-y-3">
         {filtered.map((c) => {
           const pct = c.goal ? Math.round((c.raised / c.goal) * 100) : 0;
-          const cfg = statusConfig[c.status];
+          const cfg = statusConfig[c.status.toLowerCase()] ?? statusConfig.active;
+          const isDone = c.status === "completed";
           return (
             <Card key={c.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
@@ -112,7 +167,29 @@ const OrganizerCampaigns = () => {
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/campaign/${c.id}`}><BarChart3 className="w-4 h-4 mr-1" /> View</Link>
                     </Button>
-                    <Button variant="ghost" size="sm"><Edit className="w-4 h-4" /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm"><MoreHorizontal className="w-4 h-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuItem
+                          disabled={isDone}
+                          onClick={() => setPending({ id: c.id, action: "complete" })}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
+                          Mark as completed
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          disabled={isDone}
+                          onClick={() => setPending({ id: c.id, action: "close" })}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" /> Close campaign
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="ghost" size="sm" disabled={isDone}><Edit className="w-4 h-4" /></Button>
                   </div>
                 </div>
               </CardContent>
@@ -146,6 +223,26 @@ const OrganizerCampaigns = () => {
           </Button>
         </div>
       )}
+            <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.action === "complete" ? "Mark campaign as completed?" : "Close this campaign?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.action === "complete"
+                ? "This will stop accepting donations and archive the campaign. Donors will be notified and a final report can be posted."
+                : "The campaign will stop accepting new donations immediately. You can resume it later from the paused list."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPending}>
+              {pending?.action === "complete" ? "Mark completed" : "Close campaign"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

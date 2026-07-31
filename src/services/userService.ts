@@ -10,11 +10,15 @@ export const getUserData = async () => {
     const { data } = await api.get(`/user`);
     return data;
   };
+  export const getOrganizerData = async () => {
+    const { data } = await api.get(`/organizer/dashboard`);
+    return data;
+  };
   export const getUserProfile = async (id: string | number) => {
     const { data } = await api.get(`/user/${id}`);
     return data;
   };
-  export const getApplicationStatus = async (id: string | number) => {
+  export const getStatusData = async (id: string | number) => {
     const { data } = await api.get(`/volunteer/applicationStatus/${id}`);
     return data;
   };

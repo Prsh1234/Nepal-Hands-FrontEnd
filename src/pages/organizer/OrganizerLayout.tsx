@@ -3,9 +3,25 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { OrganizerSidebar } from "@/components/OrganizerSidebar";
 import { Button } from "@/components/ui/button";
 import { Plus, HandHeart, CheckCircle2 } from "lucide-react";
-import { mockCreator } from "@/data/organizer";
+import { useEffect, useState } from "react";
+import { getOrganizerData } from "@/services/userService";
 
 const OrganizerLayout = () => {
+  const[organizer, setOrganizer] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+        try {
+            const organizerData = await getOrganizerData();
+
+            setOrganizer(organizerData);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    fetchUser();
+}, []);
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -20,15 +36,21 @@ const OrganizerLayout = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="hidden sm:flex items-center gap-2 mr-2">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center font-heading text-sm">
-                  {mockCreator.avatar}
+                <div className="w-8 h-8 rounded-full overflow-hidden">
+                {organizer?.avatar ? (
+                        <img
+                          src={`data:image/jpeg;base64,${organizer?.avatar}`}
+                          alt={`${organizer?.name} `}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        `${organizer?.name?.charAt(0).toUpperCase() ?? ""}`
+                      )}
                 </div>
                 <div className="text-xs leading-tight">
                   <div className="flex items-center gap-1 font-medium text-foreground">
-                    {mockCreator.name}
-                    {mockCreator.verified && <CheckCircle2 className="w-3 h-3 text-primary" />}
+                    {organizer?.name}
                   </div>
-                  <div className="text-muted-foreground">{mockCreator.org}</div>
                 </div>
               </div>
               <Button size="sm" asChild>

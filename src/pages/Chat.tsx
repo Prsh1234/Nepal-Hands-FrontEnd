@@ -20,6 +20,7 @@ import { ChatOpportunityDetailsResponse, getChatOpportunityDetails } from "@/ser
 import { connectRoomWebSocket, disconnectWebSocket, getMessages, sendFileMessage, sendGroupMessage } from "@/services/chatService";
 import { getUserData } from "@/services/userService";
 import ImageModal from "@/modal/ImageModal";
+import { Separator } from "@/components/ui/separator";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -259,23 +260,40 @@ const Chat = () => {
         if ((!draft.trim() && !file) || !user) return;
 
         // ── File: REST upload → backend saves to DB + broadcasts via WebSocket ──
+        if (file && draft.trim()) {
+            try {
+                await sendFileMessage(
+                    file,
+                    Number(id),
+                    user.id,
+                    `${user.firstName} ${user.lastName}`,
+                    draft,
+                );
+            } catch (err) {
+                console.error("File upload failed:", err);
+            }
+            clearFile();
+            setDraft("");
+            return;
+        }
         if (file) {
             try {
                 await sendFileMessage(
                     file,
                     Number(id),
                     user.id,
-                    `${user.firstName} ${user.lastName}`
+                    `${user.firstName} ${user.lastName}`,
+                    null
                 );
             } catch (err) {
                 console.error("File upload failed:", err);
             }
             clearFile();
-
+            return;
         }
 
         // ── Text: straight through WebSocket ──
-        if (draft.trim()) {
+        if (draft.trim() && !file) {
             sendGroupMessage({
                 opportunityId: Number(id),
                 senderId: user.id,
@@ -283,6 +301,7 @@ const Chat = () => {
                 content: draft,
             });
             setDraft("");
+            return;
         }
     };
 
@@ -382,10 +401,14 @@ const Chat = () => {
 
                                 {grouped.map((g) => (
                                     <div key={g.day} className="space-y-3">
-                                        <div className="text-center text-xs text-muted-foreground">
-                                            {format(new Date(g.day), "MMMM d, yyyy")}
-                                        </div>
 
+                                        <div className="flex items-center gap-3">
+                                            <Separator className="flex-1" />
+                                            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                                                {format(new Date(g.day), "MMMM d, yyyy")}
+                                            </span>
+                                            <Separator className="flex-1" />
+                                        </div>
                                         {g.items.map((msg) => (
                                             <div
                                                 key={msg.id}

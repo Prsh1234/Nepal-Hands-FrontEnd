@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, Users, HandHeart, Eye, ArrowRight, Clock } from "lucide-react";
-import { mockCampaigns, mockVolunteerOps, mockDonors, mockApplicants } from "@/data/organizer";
 import { useEffect, useState } from "react";
 import { getOrganizerCampaigns, getOrganizerDashboardStats, getRecentDonations, getVolunteerApplications } from "@/services/organizerDashboard";
 
-const totalRaised = mockCampaigns.reduce((s, c) => s + c.raised, 0);
-const totalDonors = mockCampaigns.reduce((s, c) => s + c.donors, 0);
-const totalApplicants = mockVolunteerOps.reduce((s, v) => s + v.applicants, 0);
+
+
 
 const OrganizerOverview = () => {
   type DashboardStats = {

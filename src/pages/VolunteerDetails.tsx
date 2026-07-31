@@ -9,6 +9,8 @@ import {
   ArrowLeft, CheckCircle, MapPin, Calendar, Users, Clock,
   Share2, Heart, Briefcase, Mail, Phone, Shield, Tag,
   AlertTriangle, Star, UserPlus, ChevronRight, Link as LinkIcon,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
@@ -19,9 +21,22 @@ import { getVolunteerOpportunityById, VolunteerOpportunityResponse } from "@/ser
 import { Loader2 } from "lucide-react";
 import ImageModal from "@/modal/ImageModal";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { applyForVolunteer, getApplicationStatus, getUserData } from "@/services/userService";
+import { applyForVolunteer, getStatusData, getUserData } from "@/services/userService";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { respondInvitation } from "@/services/invitationService";
 
+
+type InvitationAction = {
+  id: number;
+  opportunityTitle: string;
+};
 
 
 
@@ -32,22 +47,54 @@ const VolunteerDetails = () => {
   const [notFound, setNotFound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [applicationStatus, setApplicationStatus] = useState("");
+  const [invitationId, setInvitationId] = useState<number | null>(null);
+  const currentUserId = Number(localStorage.getItem("userId"));
+
+  const isOrganizer =
+    opportunity?.organizerUserId === currentUserId;
+  const today = new Date();
+
+  const startDate = new Date(opportunity?.startDate);
+  const endDate = new Date(opportunity?.endDate);
+
+  const hasStarted = today >= startDate;
+  const hasEnded = today > endDate;
+  // If the opportunity has started OR already ended,
+  // new applications are no longer accepted.
+  const isApplicationClosed =
+    today >= startDate || today > endDate;
+  const daysUntilStart = Math.max(
+    0,
+    Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  );
+
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const canAccessChat =
+    applicationStatus === "APPROVED" ||
+    applicationStatus === "ACCEPTED";
   useEffect(() => {
     if (!id) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [opportunityData, userData, applicationStatus] = await Promise.all([
+        const [opportunityData, userData, statusData] = await Promise.all([
           getVolunteerOpportunityById(id),
           getUserData(),
-          getApplicationStatus(id),
+          getStatusData(id),
         ]);
 
         setOpportunity(opportunityData);
         setApplicantEmail(userData.email);
         setApplicantName(userData.firstName + " " + userData.lastName);
-        setApplicationStatus(applicationStatus);
+        setApplicationStatus(statusData.status);
+
+        if (statusData.invitationId) {
+          setInvitationId(statusData.invitationId);
+        }
 
         console.log(applicationStatus);
 
@@ -95,7 +142,39 @@ const VolunteerDetails = () => {
 
 
   };
+  const [action, setAction] = useState<{
+    inv: InvitationAction;
+    type: "accept" | "decline";
+  } | null>(null); const [items, setItems] = useState([]);
+  const [note, setNote] = useState("");
+  const confirm = async () => {
+    if (!action) return;
+    await respondInvitation(
+      action.inv.id,
+      action.type === "accept"
+        ? "ACCEPTED"
+        : "DECLINED",
+      note
+    );
 
+    if (action.type === "accept") {
+      setApplicationStatus("APPROVED");
+    }
+    else {
+      setApplicationStatus("REJECTED");
+    }
+
+
+
+    if (action.type === "accept") {
+      toast.success("Invitation accepted!");
+    } else if (action.type === "decline") {
+      toast.error("Invitation declined!");
+    }
+
+    setAction(null);
+    setNote("");
+  };
   const [applicantName, setApplicantName] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
@@ -120,11 +199,10 @@ const VolunteerDetails = () => {
 
   // Derived values — now from API response shape
   const spotsLeft = opportunity.volunteerSpots - opportunity.filledSpots;
+  const isTeamFull = spotsLeft <= 0;
   const fillPercentage = (opportunity.filledSpots / opportunity.volunteerSpots) * 100;
 
-  const daysUntilStart = Math.max(0, Math.ceil(
-    (new Date(opportunity.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  ));
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,9 +228,20 @@ const VolunteerDetails = () => {
               <span className="text-xs font-semibold bg-white/20 backdrop-blur px-3 py-1 rounded-full">
                 {opportunity.category}
               </span>
-              {opportunity.status === "ACTIVE" && (
-                <span className="flex items-center gap-1 text-xs font-medium bg-white/20 backdrop-blur px-3 py-1 rounded-full">
-                  <CheckCircle size={12} /> Active
+              {today > endDate ? (
+                <span className="flex items-center gap-1 text-xs font-medium bg-red-500/20 backdrop-blur px-3 py-1 rounded-full">
+                  <AlertTriangle size={12} />
+                  Ended
+                </span>
+              ) : today >= startDate ? (
+                <span className="flex items-center gap-1 text-xs font-medium bg-yellow-500/20 backdrop-blur px-3 py-1 rounded-full">
+                  <Clock size={12} />
+                  In Progress
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs font-medium bg-green-500/20 backdrop-blur px-3 py-1 rounded-full">
+                  <CheckCircle size={12} />
+                  Upcoming
                 </span>
               )}
             </div>
@@ -173,12 +262,41 @@ const VolunteerDetails = () => {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: Users, label: "Spots", value: `${spotsLeft} of ${opportunity.volunteerSpots} total` },
-                { icon: Clock, label: "Hours/Day", value: `${opportunity.dailyHours}h` },
-                { icon: Briefcase, label: "Commitment", value: opportunity.commitmentType },
-                { icon: Calendar, label: "Starts In", value: `${daysUntilStart} days` },
+                {
+                  icon: Users,
+                  label: hasEnded ? "Status" : "Spots",
+                  value: hasEnded
+                    ? "Team Closed"
+                    : `${spotsLeft} of ${opportunity.volunteerSpots} total`,
+                },
+                {
+                  icon: Clock,
+                  label: "Hours/Day",
+                  value: `${opportunity.dailyHours}h`,
+                },
+                {
+                  icon: Briefcase,
+                  label: "Commitment",
+                  value: opportunity.commitmentType,
+                },
+                {
+                  icon: Calendar,
+                  label: hasEnded
+                    ? "Ended"
+                    : hasStarted
+                      ? "Days Left"
+                      : "Starts In",
+                  value: hasEnded
+                    ? "Ended"
+                    : hasStarted
+                      ? `${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`
+                      : `${daysUntilStart} day${daysUntilStart !== 1 ? "s" : ""}`,
+                },
               ].map((stat, i) => (
-                <div key={i} className="bg-card rounded-xl p-4 shadow-card border border-border text-center">
+                <div
+                  key={i}
+                  className="bg-card rounded-xl p-4 shadow-card border border-border text-center"
+                >
                   <stat.icon size={20} className="text-primary mx-auto mb-2" />
                   <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
                   <p className="text-sm font-semibold text-foreground">{stat.value}</p>
@@ -198,18 +316,25 @@ const VolunteerDetails = () => {
               <Progress value={fillPercentage} className="h-3 mb-4" />
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1"><Users size={14} /> {spotsLeft} spots remaining</span>
-                <span className="flex items-center gap-1"><Clock size={14} /> {daysUntilStart} days until start</span>
-                <button className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors">
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  {hasEnded
+                    ? "Opportunity ended"
+                    : hasStarted
+                      ? "Applications closed"
+                      : `${daysUntilStart} day${daysUntilStart !== 1 ? "s" : ""} until start`}
+                </span>                <button className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors">
                   <Share2 size={14} /> Share
                 </button>
               </div>
-              <Link
-                to={`/volunteer/${opportunity.id}/chat`}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-2 text-sm font-semibold text-primary"
-              >
-                <Users size={16} /> Open Group Chat
-                <ChevronRight size={14} />
-              </Link>
+              {canAccessChat && (
+                <Link
+                  to={`/volunteer/chat/${opportunity.id}`}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-2 text-sm font-semibold text-primary"
+                >
+                  Open Team Chat
+                </Link>
+              )}
             </motion.div>
             {/* About Tab content */}
             <Tabs defaultValue="about" className="w-full">
@@ -397,7 +522,16 @@ const VolunteerDetails = () => {
                       </motion.div>
                     ))}
                   </div>
-                  {spotsLeft > 0 && (
+                  {isTeamFull ? (
+                    <div className="mt-4 p-4 rounded-lg border border-red-200 bg-red-50 text-center">
+                      <p className="font-semibold text-red-600">
+                        Team Full
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        This volunteer opportunity has reached its maximum capacity.
+                      </p>
+                    </div>
+                  ) : (
                     <div className="mt-4 p-4 bg-accent/50 rounded-lg border border-primary/20 text-center">
                       <p className="text-sm text-foreground font-medium">
                         {spotsLeft} more volunteer{spotsLeft > 1 ? "s" : ""} needed!
@@ -449,7 +583,39 @@ const VolunteerDetails = () => {
                 <h3 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                   <UserPlus size={20} className="text-primary" /> Apply to Volunteer
                 </h3>
-                {applicationStatus === "NOT_APPLIED" ? (
+                {isOrganizer ? (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
+                    <Users className="mx-auto mb-3 text-blue-600" size={40} />
+                    <h4 className="text-lg font-semibold">
+                      You are the organizer
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Organizers cannot apply to their own volunteer opportunity.
+                    </p>
+                  </div>
+                ) : isTeamFull ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+                    <Users className="mx-auto mb-3 text-red-600" size={40} />
+                    <h4 className="text-lg font-semibold">
+                      Team is Full
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      All volunteer positions have already been filled.
+                    </p>
+                  </div>
+                ) : isApplicationClosed ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+                    <AlertTriangle className="mx-auto mb-3 text-amber-600" size={40} />
+                    <h4 className="text-lg font-semibold">
+                      Applications Closed
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {today > endDate
+                        ? "This volunteer opportunity has ended."
+                        : "This volunteer opportunity has already started. Applications are no longer being accepted."}
+                    </p>
+                  </div>
+                ) : applicationStatus === "NOT_APPLIED" ? (
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium text-foreground mb-1 block">
@@ -534,9 +700,9 @@ const VolunteerDetails = () => {
                     {applicationStatus === "APPROVED" && (
                       <>
                         <CheckCircle className="mx-auto mb-3 text-green-500" size={40} />
-                        <h4 className="font-semibold text-lg">Application Approved</h4>
+                        <h4 className="font-semibold text-lg">Congratulations</h4>
                         <p className="text-sm text-muted-foreground mt-2">
-                          Congratulations! Your application has been approved.
+                          You are in the Team!
                         </p>
                       </>
                     )}
@@ -548,6 +714,62 @@ const VolunteerDetails = () => {
                         <p className="text-sm text-muted-foreground mt-2">
                           Unfortunately, your application was not selected.
                         </p>
+                      </>
+                    )}
+
+                    {applicationStatus === "INVITED" && (
+                      <>
+                        <CheckCircle
+                          className="mx-auto mb-3 text-green-500"
+                          size={40}
+                        />
+
+                        <h4 className="font-semibold text-lg">
+                          Invitation
+                        </h4>
+
+                        <p className="text-sm text-muted-foreground mt-2">
+                          You have been invited to join this opportunity.
+                        </p>
+
+
+                        <div className="flex gap-2 justify-center mt-4">
+
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setAction({
+                                inv: {
+                                  id: invitationId!,
+                                  opportunityTitle: opportunity.title
+                                },
+                                type: "accept"
+                              })
+                            }
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Accept
+                          </Button>
+
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setAction({
+                                inv: {
+                                  id: invitationId!,
+                                  opportunityTitle: opportunity.title
+                                },
+                                type: "decline"
+                              })
+                            }
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Decline
+                          </Button>
+
+                        </div>
                       </>
                     )}
 
@@ -601,7 +823,34 @@ const VolunteerDetails = () => {
         image={selectedImage}
         onClose={() => setSelectedImage(null)}
       />
+      <Dialog open={!!action} onOpenChange={(o) => !o && (setAction(null), setNote(""))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {action?.type === "accept" ? "Accept invitation" : "Decline invitation"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {action?.type === "accept"
+              ? `You're accepting the invitation to "${action?.inv.opportunityTitle}". The organizer will be notified.`
+              : `You're declining the invitation to "${action?.inv.opportunityTitle}". A short reason helps organizers.`}
+          </p>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={action?.type === "accept" ? "Optional message to the organizer" : "Reason (optional)"}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAction(null); setNote(""); }}>Cancel</Button>
+            <Button onClick={confirm} variant={action?.type === "decline" ? "destructive" : "default"}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Footer />
+
     </div >
   );
 };

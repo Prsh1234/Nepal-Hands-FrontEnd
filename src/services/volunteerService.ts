@@ -59,6 +59,7 @@ export interface Volunteers {
 }
 export interface VolunteerOpportunityResponse {
   id: number;
+  organizerUserId: number;
   title: string;
   category: string;
   location: string;
@@ -236,5 +237,7 @@ export const updateVolunteerOpportunity = async (id: number, data: VolunteerOppo
 };
 
 export const deleteVolunteerOpportunity = async (id: number) => {
-  await api.delete(`/organizer/volunteer-opportunities/${id}`);
+  await api.delete(`/organizer/dashboard/volunteer-opportunities/${id}`);
 };
+
+
