@@ -295,9 +295,9 @@ const Kyc = () => {
             <ShieldCheck className="h-8 w-8 text-primary" />
             <h1 className="font-display text-3xl font-bold">KYC Verification</h1>
           </div>
-          <p className="text-muted-foreground mb-6">
+          {/* <p className="text-muted-foreground mb-6">
             Required by Nepal Rastra Bank guidelines (AML/CFT Act 2008). Your data is encrypted and only accessed by our compliance team.
-          </p>
+          </p> */}
 
           {existing?.status === "rejected" && (
             <Card className="mb-6 border-destructive/50 bg-destructive/5">

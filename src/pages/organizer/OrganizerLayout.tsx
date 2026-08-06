@@ -1,27 +1,79 @@
-import { Outlet, Link } from "react-router-dom";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { OrganizerSidebar } from "@/components/OrganizerSidebar";
-import { Button } from "@/components/ui/button";
 import { Plus, HandHeart, CheckCircle2 } from "lucide-react";
+import { Outlet, Link, useNavigate } from "react-router-dom";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/AdminSidebar";
+import { Input } from "@/components/ui/input";
+import { Search, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getOrganizerData } from "@/services/userService";
-
+import { Button } from "@/components/ui/button";
+import { Menu, X, User, LayoutDashboard, Mail, LogOut } from "lucide-react";
+import logo from "@/assets/nepal-hands-logo.png";
+import NotificationBell from "@/components/NotificationBell";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
+import { getUserData } from "@/services/userService";
 const OrganizerLayout = () => {
-  const[organizer, setOrganizer] = useState<any>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
+  const [user, setUser] = useState<any>(null);
+  const isOrganizer = user?.roles?.includes("ROLE_ORGANIZER");
+  const isAdmin = user?.roles.includes("ROLE_ADMIN");
+  const navigate = useNavigate();
   useEffect(() => {
-    const fetchUser = async () => {
-        try {
-            const organizerData = await getOrganizerData();
+    const token = localStorage.getItem("AUTH_TOKEN");
 
-            setOrganizer(organizerData);
-        } catch (error) {
-            console.error(error);
-        }
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    const fetchUser = async () => {
+      try {
+        const userData = await getUserData();
+
+        setUser(userData);
+        console.log("USER:", userData);
+      } catch (error) {
+        console.error(error);
+      }
     };
 
     fetchUser();
-}, []);
+  }, []);
+
+
+
+
+  const email = user?.email ?? "";
+  const name =
+    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
+    email.split("@")[0]; const initials = (name || "U")
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join("");
+
+  const handleSignOut = () => {
+    localStorage.removeItem("AUTH_TOKEN");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("role");
+    localStorage.removeItem("REFRESH_TOKEN");
+    setUser(null);
+    setIsOpen(false);
+
+    toast.success("Signed out");
+
+    navigate("/auth");
+  };
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -35,31 +87,131 @@ const OrganizerLayout = () => {
               </Link>
             </div>
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 mr-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden">
-                {organizer?.avatar ? (
-                        <img
-                          src={`data:image/jpeg;base64,${organizer?.avatar}`}
-                          alt={`${organizer?.name} `}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        `${organizer?.name?.charAt(0).toUpperCase() ?? ""}`
-                      )}
-                </div>
-                <div className="text-xs leading-tight">
-                  <div className="flex items-center gap-1 font-medium text-foreground">
-                    {organizer?.name}
-                  </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3">
+                {user ? (
+                  <>
+                    <NotificationBell />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="rounded-full ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          aria-label="Account menu"
+                        >
+                          <Avatar className="h-9 w-9">
+                            {user?.profilePic && (
+                              <AvatarImage
+                                src={`data:image/jpeg;base64,${user.profilePic}`}
+                                alt={name}
+                              />
+                            )}
+
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                              {initials || <User className="h-4 w-4" />}
+                            </AvatarFallback>
+                          </Avatar>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+                        <DropdownMenuLabel className="font-normal">
+                          <p className="text-sm font-medium truncate">{name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{email}</p>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link to="/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+                        </DropdownMenuItem>
+                        {isOrganizer && (
+                          <DropdownMenuItem asChild>
+                            <Link to="/organizer">
+                              <LayoutDashboard className="mr-2 h-4 w-4" />
+                              Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        {isAdmin && (
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/approvals">
+                              <LayoutDashboard className="mr-2 h-4 w-4" />
+                              Admin Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem asChild>
+                          <Link to="/invitations"><Mail className="mr-2 h-4 w-4" /> Invitations</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                          <LogOut className="mr-2 h-4 w-4" /> Log out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/auth">Sign In</Link>
+                    </Button>
+                  </>
+                )}
+
+                {/* Mobile toggle */}
+                <div className="md:hidden flex items-center gap-2">
+                  {user && <NotificationBell />}
+                  <button className="text-foreground" onClick={() => setIsOpen(!isOpen)} aria-label="Toggle menu">
+                    {isOpen ? <X size={24} /> : <Menu size={24} />}
+                  </button>
                 </div>
               </div>
+
+              {/* Mobile menu */}
+              {isOpen && (
+                <div className="md:hidden bg-background border-b border-border px-4 pb-4">
+                  
+                  {user ? (
+                    <>
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                            {initials || <User className="h-4 w-4" />}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{email}</p>
+                        </div>
+                      </div>
+                      <Link to="/profile" onClick={() => setIsOpen(false)} className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary">Profile</Link>
+                      <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary">Dashboard</Link>
+                      <Link to="/invitations" onClick={() => setIsOpen(false)} className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary">Invitations</Link>
+                      <div className="flex gap-2 mt-3">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={handleSignOut}>
+                          <LogOut className="mr-2 h-4 w-4" /> Log out
+                        </Button>
+                        <Button size="sm" className="flex-1" asChild>
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex gap-2 mt-3">
+                      <Button variant="ghost" size="sm" className="flex-1" asChild>
+                        <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
+                      </Button>
+                      <Button size="sm" className="flex-1" asChild>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
               <Button size="sm" asChild>
-                <Link to="/create">
+                <Link to="/organizer/campaign/create">
                   <Plus className="w-4 h-4 mr-1" /> Campaign
                 </Link>
               </Button>
               <Button size="sm" variant="outline" asChild>
-                <Link to="/volunteer/create">
+                <Link to="/organizer/volunteer/create">
                   <HandHeart className="w-4 h-4 mr-1" /> Opportunity
                 </Link>
               </Button>

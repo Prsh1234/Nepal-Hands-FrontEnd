@@ -3,15 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-    updateCampaignStatus,
     getKycs,
     updateKycStatus,
 } from "@/services/adminService";
-import api from "@/lib/api";
 import ImageModal from "@/modal/ImageModal";
 import KycDetailsModal from "@/modal/KycDetailsModal";
 import ConfirmationModal from "@/modal/ConfirmationModal";

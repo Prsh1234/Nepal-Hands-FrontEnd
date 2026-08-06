@@ -9,7 +9,6 @@ export interface CampaignRequest {
   longDescription: string;
   projectScope: string;
   goal: number;
-  duration: string;
   organizer: string;
   startDate: string;
   endDate: string;
@@ -55,7 +54,6 @@ export interface CampaignResponse {
   goal: number;
   totalDonors: number;
   raised: number;
-  duration: string;
   organizer: string;
   startDate: string;
   endDate: string;
@@ -102,7 +100,6 @@ export const createCampaign = async (data: CampaignRequest) => {
   formData.append("longDescription", data.longDescription);
   formData.append("projectScope", data.projectScope);
   formData.append("goal", String(data.goal));
-  formData.append("duration", data.duration);
   formData.append("organizer", data.organizer);
   formData.append("startDate", data.startDate);
   formData.append("endDate", data.endDate);

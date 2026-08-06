@@ -21,8 +21,8 @@ const Navbar = () => {
   const navLinks = [
     { label: "Campaigns", href: "/campaigns" },
     { label: "Volunteer", href: "/volunteers" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "About", href: "#about" },
+    { label: "How It Works", href: "/how-it-works" },
+    { label: "About", href: "/about" },
   ];
   const [user, setUser] = useState<any>(null);
   const isOrganizer = user?.roles?.includes("ROLE_ORGANIZER");
@@ -43,7 +43,6 @@ const Navbar = () => {
         console.log("USER:", userData);
       } catch (error) {
         console.error(error);
-        toast.error("Error fetching user data");
       }
     };
 
@@ -67,7 +66,7 @@ const Navbar = () => {
     localStorage.removeItem("AUTH_TOKEN");
     localStorage.removeItem("userId");
     localStorage.removeItem("role");
-
+    localStorage.removeItem("REFRESH_TOKEN");
     setUser(null);
     setIsOpen(false);
 
@@ -113,7 +112,6 @@ const Navbar = () => {
           {user ? (
             <>
               <NotificationBell />
-              <Button size="sm" asChild><Link to="/create">Start Campaign</Link></Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -152,13 +150,13 @@ const Navbar = () => {
                     </DropdownMenuItem>
                   )}
                   {isAdmin && (
-  <DropdownMenuItem asChild>
-    <Link to="/admin/approvals">
-      <LayoutDashboard className="mr-2 h-4 w-4" />
-      Admin Dashboard
-    </Link>
-  </DropdownMenuItem>
-)}
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin/approvals">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuItem asChild>
                     <Link to="/invitations"><Mail className="mr-2 h-4 w-4" /> Invitations</Link>
@@ -175,7 +173,6 @@ const Navbar = () => {
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>
-              <Button size="sm" asChild><Link to="/create">Start Campaign</Link></Button>
             </>
           )}
 
@@ -233,7 +230,6 @@ const Navbar = () => {
                     <LogOut className="mr-2 h-4 w-4" /> Log out
                   </Button>
                   <Button size="sm" className="flex-1" asChild>
-                    <Link to="/create" onClick={() => setIsOpen(false)}>Start Campaign</Link>
                   </Button>
                 </div>
               </>
@@ -243,7 +239,6 @@ const Navbar = () => {
                   <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
                 </Button>
                 <Button size="sm" className="flex-1" asChild>
-                  <Link to="/create" onClick={() => setIsOpen(false)}>Start Campaign</Link>
                 </Button>
               </div>
             )}

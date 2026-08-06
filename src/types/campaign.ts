@@ -7,7 +7,6 @@ export type CampaignRequest = {
     longDescription?: string;
     projectScope: string[];
     goal: number;
-    duration: string;
     organizer: string;
     startDate: string;
     endDate: string;

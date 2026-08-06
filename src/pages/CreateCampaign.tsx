@@ -43,7 +43,6 @@ const CreateCampaign = () => {
   const [longDescription, setLongDescription] = useState("");
   const [projectScope, setProjectScope] = useState("");
   const [goal, setGoal] = useState<string>("");
-  const [duration, setDuration] = useState("30");
   const [organizer, setOrganizer] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
@@ -266,7 +265,6 @@ const CreateCampaign = () => {
         longDescription,
         projectScope,
         goal: goalNumber,
-        duration,
         organizer,
         startDate,
         endDate,
@@ -292,7 +290,7 @@ const CreateCampaign = () => {
       });
 
       toast.success("Campaign submitted successfully!");
-      navigate("/");
+      navigate("/organizer");
     } catch (err: any) {
       const msg = err?.errors
         ? Object.values(err.errors).join(", ")
@@ -376,6 +374,7 @@ const CreateCampaign = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">Campaign Title *</label>
                     <Input
+                    id="campaign-title" 
                       placeholder="e.g. Clean Water for Dolakha"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -409,6 +408,7 @@ const CreateCampaign = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">Location *</label>
                     <Input
+                      id="campaign-location"
                       placeholder="e.g. Dolakha, Bagmati Province"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
@@ -480,6 +480,7 @@ const CreateCampaign = () => {
                         NPR
                       </span>
                       <Input
+                      id="campaign-goal"
                         type="number"
                         placeholder="500000"
                         value={goal}
@@ -500,24 +501,6 @@ const CreateCampaign = () => {
                       </p>
                     )}
 
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Campaign Duration</label>
-                    <div className="flex gap-3">
-                      {["15", "30", "45", "60"].map((d) => (
-                        <button
-                          key={d}
-                          onClick={() => setDuration(d)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${duration === d
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-border hover:border-primary/40 text-foreground"
-                            }`}
-                        >
-                          {d} days
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </>
               )}
@@ -564,6 +547,7 @@ const CreateCampaign = () => {
                         </span>
 
                         <input
+                          id="campaign-cover-image"
                           type="file"
                           accept="image/*"
                           hidden
@@ -613,6 +597,8 @@ const CreateCampaign = () => {
                           </span>
 
                           <input
+                            id="campaign-gallery-images"
+
                             type="file"
                             accept="image/*"
                             multiple
@@ -677,6 +663,7 @@ const CreateCampaign = () => {
                           Email *
                         </label>
                         <Input
+                        id="campaign-contact-email"
                           type="email"
                           placeholder="contact@org.np"
                           value={contactEmail}
@@ -995,9 +982,7 @@ const CreateCampaign = () => {
                       <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
                         📍 {location}
                       </span>
-                      <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                        ⏱ {duration} days
-                      </span>
+
                     </div>
 
                     <p className="text-sm text-muted-foreground">{description}</p>

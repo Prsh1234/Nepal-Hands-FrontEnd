@@ -15,8 +15,16 @@ import logo from "@/assets/nepal-hands-logo.png";
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: "Enter a valid email" }).max(255),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(72),
-});
+  password: z
+  .string()
+  .min(8, { message: "Password must be at least 8 characters" })
+  .max(72)
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$/,
+    {
+      message: "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+    }
+  ),});
 
 const signUpSchema = signInSchema.extend({
   firstName: z.string().trim().min(2, { message: "First name must be at least 2 characters" }).max(80),
@@ -56,6 +64,7 @@ const Auth = () => {
         });
         localStorage.setItem("AUTH_TOKEN", data.accessToken);
         localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
+        localStorage.setItem("role", data.user.roles);
         toast.success("Welcome back!");
         navigate("/profile");
       } else {
@@ -67,6 +76,8 @@ const Auth = () => {
         });
         localStorage.setItem("AUTH_TOKEN", data.accessToken);
         localStorage.setItem("REFRESH_TOKEN", data.refreshToken);
+        localStorage.setItem("role", data.user.roles);
+
         toast.success("Account created successfully!");
         navigate("/profile");
       }

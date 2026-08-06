@@ -113,7 +113,7 @@ const OrganizerCampaigns = () => {
           <p className="text-sm text-muted-foreground">Manage your fundraising campaigns.</p>
         </div>
         <Button asChild>
-          <Link to="/create"><Plus className="w-4 h-4 mr-1" /> New Campaign</Link>
+          <Link to="/organizer/campaign/create"><Plus className="w-4 h-4 mr-1" /> New Campaign</Link>
         </Button>
       </div>
 

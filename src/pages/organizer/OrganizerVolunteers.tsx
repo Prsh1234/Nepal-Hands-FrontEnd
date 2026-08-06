@@ -91,7 +91,7 @@ const OrganizerVolunteers = () => {
           <p className="text-sm text-muted-foreground">Manage opportunities you have posted.</p>
         </div>
         <Button asChild>
-          <Link to="/volunteer/create"><Plus className="w-4 h-4 mr-1" /> New Opportunity</Link>
+          <Link to="/organizer/volunteer/create"><Plus className="w-4 h-4 mr-1" /> New Opportunity</Link>
         </Button>
       </div>
 

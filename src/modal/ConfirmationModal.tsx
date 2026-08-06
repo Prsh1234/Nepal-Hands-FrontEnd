@@ -76,6 +76,7 @@ const ConfirmationModal = ({
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-green-600 hover:bg-green-700 text-white"
             }
+            id="confirmation-approve"
             onClick={onConfirm}
             disabled={loading}
           >

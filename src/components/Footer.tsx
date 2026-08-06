@@ -1,5 +1,6 @@
 import logo from "@/assets/nepal-hands-logo.png";
 import { Heart } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -21,15 +22,30 @@ const Footer = () => {
           {[
             {
               title: "Platform",
-              links: ["Browse Campaigns", "Volunteer", "Create Campaign", "Transparency Reports"],
+              links: [
+                { label: "Browse Campaigns", to: "/campaigns" },
+                { label: "Browse Volunteer Opportuninites", to: "/volunteers" },
+                { label: "Create Campaign", to: "/organizer/campaign/create" },
+                { label: "Create Volunteer Opportuninites", to: "/organizer/volunteer/create" },
+
+              ],
             },
             {
               title: "Resources",
-              links: ["How It Works", "FAQs", "Blog", "Contact Us"],
+              links: [
+                { label: "How It Works", to: "/how-it-works" },
+                { label: "FAQs", to: "/faqs" },
+                { label: "About", to: "/about" },
+                { label: "Support Us", to: "/support" },
+
+              ],
             },
             {
               title: "Legal",
-              links: ["Privacy Policy", "Terms of Service", "Cookie Policy"],
+              links: [
+                { label: "Privacy Policy", to: "/privacy" },
+                { label: "Terms of Service", to: "/terms" },
+              ],
             },
           ].map((col) => (
             <div key={col.title}>
@@ -38,11 +54,11 @@ const Footer = () => {
               </h4>
               <ul className="space-y-2">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-background/50 hover:text-background transition-colors">
-                      {link}
-                    </a>
-                  </li>
+                  <li key={link.label}>
+                  <Link to={link.to} className="text-sm text-background/50 hover:text-background transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
                 ))}
               </ul>
             </div>

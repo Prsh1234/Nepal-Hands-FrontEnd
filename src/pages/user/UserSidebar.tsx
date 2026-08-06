@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   PlusCircle,
   BadgeCheck,
+  HeartHandshake,
 } from "lucide-react";
 
 import {
@@ -32,10 +33,12 @@ const discover = [
   { title: "Home", url: "/", icon: Home, end: true },
   { title: "Campaigns", url: "/campaigns", icon: Megaphone },
   { title: "Volunteer", url: "/volunteers", icon: HandHeart },
+  { title: "Support Us", url: "/support", icon: HeartHandshake },
 ];
 
 
 const baseAccount = [
+  { title: "My Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Profile", url: "/profile", icon: User },
   { title: "Invitations", url: "/invitations", icon: Mail },
   { title: "Notifications", url: "/notifications", icon: Bell },
@@ -43,8 +46,8 @@ const baseAccount = [
 
 
 const create = [
-  { title: "Start Campaign", url: "/create", icon: PlusCircle },
-  { title: "Post Opportunity", url: "/volunteer/create", icon: HandHeart },
+  { title: "Start Campaign", url: "/organizer/campaign/create", icon: PlusCircle },
+  { title: "Post Opportunity", url: "/organizer/volunteer/create", icon: HandHeart },
 ];
 
 
@@ -87,8 +90,8 @@ export function UserSidebar() {
     ...(isOrganizer
       ? [
           {
-            title: "Dashboard",
-            url: "/dashboard",
+            title: "Organizer Dashboard",
+            url: "/organizer",
             icon: LayoutDashboard,
           },
         ]
@@ -98,7 +101,7 @@ export function UserSidebar() {
       ? [
           {
             title: "Admin Dashboard",
-            url: "/admin/dashboard",
+            url: "/admin/approvals",
             icon: ShieldCheck,
           },
         ]

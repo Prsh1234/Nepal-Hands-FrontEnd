@@ -5,6 +5,9 @@ let stompClient: InstanceType<typeof Client> | null = null;
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
+export const checkGroupChatAccess = (id) =>
+    api.get(`/volunteer/chat/${id}/access`);
+    
 export const connectWebSocket = (onMessageReceived: (msg: any) => void) => {
     const token = localStorage.getItem("AUTH_TOKEN");
 

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield } from "lucide-react";
 import heroImage from "@/assets/hero-nepal.jpg";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -26,12 +27,7 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 mb-6">
-              <Shield size={16} className="text-primary" />
-              <span className="text-sm font-medium text-primary-foreground/90">
-                Admin-Verified Campaigns
-              </span>
-            </div>
+
 
             <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
               <span className="text-primary-foreground">Empowering</span>{" "}
@@ -45,9 +41,13 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="text-base px-8 gap-2">
-                Start a Campaign <ArrowRight size={18} />
-              </Button>
+              <Link to="/organizer/campaign/create">
+                <Button size="lg" className="text-base px-8 gap-2">
+                  Start a Campaign <ArrowRight size={18} />
+                </Button>
+
+              </Link>
+              <Link to="/campaigns">
               <Button
                 size="lg"
                 variant="outline"
@@ -55,6 +55,7 @@ const Hero = () => {
               >
                 Explore Campaigns
               </Button>
+              </Link> 
             </div>
           </motion.div>
         </div>

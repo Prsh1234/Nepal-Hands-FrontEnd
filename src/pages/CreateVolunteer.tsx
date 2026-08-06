@@ -241,7 +241,7 @@ const CreateVolunteer = () => {
       case 3:
         return !!coverImageFile;
       case 4:
-        return startDate && endDate && contactName.trim() && contactEmail.trim();
+        return startDate && endDate && contactName.trim() && contactEmail.trim() && contactPhone.trim();
       case 5: {
         const requiredDocsUploaded = DOCUMENT_TYPES.every((doc) => {
           const isConditionallyRequired =
@@ -318,7 +318,7 @@ const CreateVolunteer = () => {
         uploadedDocs,
       });
       toast.success("Volunteer request submitted! We'll review it within 24 hours.");
-      navigate(`/volunteer/${response.id}`);
+      navigate(`/organizer`);
     } catch (err: any) {
       const msg = err?.errors
         ? Object.values(err.errors).join(", ")   // Spring field-level errors
@@ -475,12 +475,9 @@ const CreateVolunteer = () => {
                       placeholder="Who organized the volunteer opportunity?"
                       value={organizer}
                       onChange={(e) => setOrganizer(e.target.value)}
-                      rows={5}
-                      className="min-h-[120px]"
+                      rows={1}
+                      className="min-h-[16px]"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {organizer.length} characters (minimum 40)
-                    </p>
                   </div>
                 </>
               )}
@@ -565,7 +562,7 @@ const CreateVolunteer = () => {
                       placeholder="e.g. Must be comfortable in remote areas, bring own sleeping bag..."
                       value={requirements}
                       onChange={(e) => setRequirements(e.target.value)}
-                      rows={3}
+                      rows={5}
                     />
                   </div>
                 </>
@@ -809,11 +806,12 @@ const CreateVolunteer = () => {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-foreground">
-                          Phone (optional)
+                          Phone *
                         </label>
                         <Input
                           type="tel"
-                          placeholder="+977-XXXXXXXXXX"
+                          placeholder="+977 98XXXXXXXX"
+                          maxLength={14}
                           value={contactPhone}
                           onChange={(e) => setContactPhone(e.target.value)}
                         />
@@ -963,7 +961,8 @@ const CreateVolunteer = () => {
 
                       <Input
                         type="tel"
-                        placeholder="+977-XXXXXXXXXX"
+                        placeholder="+977 98XXXXXXXX"
+                        maxLength={14}
                         value={officialPhone}
                         onChange={(e) => setOfficialPhone(e.target.value)}
                       />

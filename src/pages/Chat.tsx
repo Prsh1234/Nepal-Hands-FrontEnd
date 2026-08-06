@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ChatOpportunityDetailsResponse, getChatOpportunityDetails } from "@/services/volunteerService";
-import { connectRoomWebSocket, disconnectWebSocket, getMessages, sendFileMessage, sendGroupMessage } from "@/services/chatService";
+import { checkGroupChatAccess, connectRoomWebSocket, disconnectWebSocket, getMessages, sendFileMessage, sendGroupMessage } from "@/services/chatService";
 import { getUserData } from "@/services/userService";
 import ImageModal from "@/modal/ImageModal";
 import { Separator } from "@/components/ui/separator";
@@ -84,6 +84,7 @@ const FileAttachment = ({
 
 const Chat = () => {
     const { id } = useParams();
+    const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
     // ── State ──
     const [opportunity, setOpportunity] = useState<ChatOpportunityDetailsResponse>(null);
@@ -103,12 +104,36 @@ const Chat = () => {
     const hasMoreRef = useRef(true);
     const loadingMoreRef = useRef(false);
     const isReady = useMemo(() => {
-        return !!id && !!user && !!opportunity;
-    }, [id, user, opportunity]);
+        return !!id && !!user && !!opportunity && hasAccess === true;
+    }, [id, user, opportunity, hasAccess]);
     // Keep refs in sync with state so scroll handler never reads stale values
     useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
     // ── File selection ──
+    useEffect(() => {
+        if (!id) return;
+    
+        const initialize = async () => {
+            try {
+                    
+                await checkGroupChatAccess(Number(id));
+                const [userData, opportunityData] = await Promise.all([
+                    getUserData(),
+                    getChatOpportunityDetails(id),
+                ]);
+    
+                setUser(userData);
+                setOpportunity(opportunityData);
 
+    
+                setHasAccess(true);
+            } catch (err) {
+                console.error(err);
+                setHasAccess(false);
+            }
+        };
+    
+        initialize();
+    }, [id]);
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0];
         if (!selected) return;
@@ -174,14 +199,6 @@ const Chat = () => {
 
     // ── Effects: data fetching ──
 
-    useEffect(() => {
-        if (!id) return;
-        getChatOpportunityDetails(id).then(setOpportunity).catch(console.error);
-    }, [id]);
-
-    useEffect(() => {
-        getUserData().then(setUser).catch(console.error);
-    }, []);
 
     // Reset + load page 0 whenever the chat room changes
     useEffect(() => {

@@ -6,6 +6,7 @@ import {
   Flag,
   Users,
   BarChart3,
+  HeartHandshake,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,12 +22,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Overview", url: "/admin", icon: LayoutDashboard, end: true },
-  { title: "Approvals", url: "/admin/approvals", icon: Clock },
+  { title: "Approvals", url: "/admin/approvals", icon: Clock, end: true},
   { title: "KYC", url: "/admin/kyc", icon: BadgeCheck },
-  { title: "Flagged", url: "/admin/flagged", icon: Flag },
-  { title: "Users", url: "/admin/users", icon: Users },
-  { title: "Transactions", url: "/admin/transactions", icon: BarChart3 },
+  { title: "Platform Support", url: "/admin/support", icon: HeartHandshake },
+
 ];
 
 export function AdminSidebar() {

@@ -23,6 +23,7 @@ import CampaignRequestModal from "@/modal/CampaignRequestModal";
 import type { VolunteerRequest } from "@/types/volunteer";
 import ConfirmationModal from "@/modal/ConfirmationModal";
 import { CampaignRequest } from "@/types/campaign";
+import { formatDate } from "@/lib/utils";
 
 
 const statusBadge = (status: string) => {
@@ -396,9 +397,10 @@ const AdminApprovals = () => {
                                         <TableCell>{c.organizer}</TableCell>
                                         <TableCell><Badge variant="outline">{c.category}</Badge></TableCell>
                                         <TableCell>{c.goal.toLocaleString()}</TableCell>
-                                        <TableCell>{c.createdAt}</TableCell>
+                                        <TableCell>{formatDate(c.createdAt)}</TableCell>
                                         <TableCell className="text-right space-x-2">
                                             <Button
+                                                id="view-campaign-details"
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() => openCampaignDetails(c)}
@@ -409,9 +411,11 @@ const AdminApprovals = () => {
                                             {c.status === "PENDING_REVIEW" && (
                                                 <>
                                                     <Button
+                                                        id="table-approve-campaign"
                                                         size="sm"
                                                         className="bg-green-600 hover:bg-green-700 text-white"
-                                                        onClick={() => openCampaignApproveConfirm(c.id)}                              >
+                                                        onClick={() => openCampaignApproveConfirm(c.id)}
+                                                    >
                                                         <CheckCircle className="h-4 w-4" />
                                                     </Button>
 

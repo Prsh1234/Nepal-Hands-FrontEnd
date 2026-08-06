@@ -10,11 +10,27 @@ import { toast } from "sonner";
 import logo from "@/assets/nepal-hands-logo.png";
 import axios from "axios";
 
-const schema = z.object({
-  password: z.string().min(8, "At least 8 characters").max(72),
-  confirm: z.string(),
-}).refine((v) => v.password === v.confirm, { message: "Passwords do not match", path: ["confirm"] });
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(72, "Password must not exceed 72 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(
+    /[!@#$%^&*(),.?":{}|<>_\-+=/\\[\];'`~]/,
+    "Password must contain at least one special character"
+  );
 
+const schema = z
+  .object({
+    password: passwordSchema,
+    confirm: z.string(),
+  })
+  .refine((data) => data.password === data.confirm, {
+    message: "Passwords do not match",
+    path: ["confirm"],
+  });
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
@@ -86,7 +102,16 @@ const ResetPassword = () => {
 
     }
   };
-
+  const handlePasswordChange = (value: string) => {
+    setForm((prev) => ({ ...prev, password: value }));
+  
+    const result = passwordSchema.safeParse(value);
+  
+    setErrors((prev) => ({
+      ...prev,
+      password: result.success ? "" : result.error.issues[0].message,
+    }));
+  };
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="w-full max-w-md">
@@ -120,15 +145,12 @@ const ResetPassword = () => {
                 <div className="space-y-2">
                   <Label htmlFor="password">New password</Label>
                   <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    maxLength={72}
-                    autoComplete="new-password"
-                    disabled={!ready}
-                  />
+  id="password"
+  type="password"
+  value={form.password}
+  onChange={(e) => handlePasswordChange(e.target.value)}
+  disabled={!ready}
+/>
                   {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
                 </div>
                 <div className="space-y-2">

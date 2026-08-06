@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+
 import {
     User,
     Mail,
@@ -29,8 +30,9 @@ import {
     Bell,
     LayoutDashboard,
 } from "lucide-react";
-import { getUserData, updateProfilePicture, updateUserProfile } from "@/services/userService";
+import { changePassword, getUserData, updateProfilePicture, updateUserProfile } from "@/services/userService";
 import { formatDate } from "@/lib/utils";
+import z from "zod";
 
 const lifetimeStats = {
     totalDonated: 18000,
@@ -44,9 +46,9 @@ const SKILL_OPTIONS = [
     "Project Management", "Social Work", "Counseling", "Agriculture",
 ];
 const INTEREST_OPTIONS = [
-    "Education","Healthcare","Women Empowerment","Environment","Disaster Relief",
-    "Culture & Heritage","Community Development","Children","Rural Development",
-  ];
+    "Education", "Healthcare", "Women Empowerment", "Environment", "Disaster Relief",
+    "Culture & Heritage", "Community Development", "Children", "Rural Development",
+];
 const Profile = () => {
     const [editing, setEditing] = useState(false);
     const [profile, setProfile] = useState(null);
@@ -64,13 +66,83 @@ const Profile = () => {
                 localStorage.setItem("userId", userData.id);
             } catch (error) {
                 console.error(error);
-                toast.error("Error fetching user data");
             }
         };
 
         fetchUser();
     }, []);
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+    });
 
+    const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+    const [changingPassword, setChangingPassword] = useState(false);
+    const passwordSchema = z
+        .object({
+            currentPassword: z.string().min(1, "Current password is required"),
+            newPassword: z
+                .string()
+                .min(8, "Password must be at least 8 characters")
+                .max(72, "Password must not exceed 72 characters")
+                .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+                .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+                .regex(/[0-9]/, "Password must contain at least one number")
+                .regex(
+                    /[!@#$%^&*(),.?":{}|<>_\-+=/\\[\];'`~]/,
+                    "Password must contain at least one special character"
+                ),
+            confirmPassword: z.string(),
+        })
+        .refine((data) => data.newPassword === data.confirmPassword, {
+            path: ["confirmPassword"],
+            message: "Passwords do not match",
+        })
+        .refine((data) => data.currentPassword !== data.newPassword, {
+            path: ["newPassword"],
+            message: "New password must be different from your current password",
+        });
+
+    const handleChangePassword = async () => {
+        setPasswordErrors({});
+
+        const parsed = passwordSchema.safeParse(passwordForm);
+
+        if (!parsed.success) {
+            const errors: Record<string, string> = {};
+
+            parsed.error.issues.forEach((issue) => {
+                errors[issue.path[0] as string] = issue.message;
+            });
+
+            setPasswordErrors(errors);
+            return;
+        }
+
+        try {
+            setChangingPassword(true);
+
+            await changePassword({
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            });
+
+            toast.success("Password updated successfully.");
+
+            setPasswordForm({
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            });
+        } catch (error: any) {
+            toast.error(
+                "Failed to update password."
+            );
+        } finally {
+            setChangingPassword(false);
+        }
+    };
     const handleSave = async () => {
         try {
             const updatedUser = await updateUserProfile({
@@ -164,6 +236,7 @@ const Profile = () => {
             </div>
         );
     }
+
     return (
         <div className="min-h-screen bg-background">
             <Navbar />
@@ -234,10 +307,10 @@ const Profile = () => {
                                 </h2>
                                 <p className="text-sm text-muted-foreground">{view.email}</p>
                                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
-                                    {view.roles?.includes("ROLE_DONOR") && (
+                                    {view.roles?.includes("ROLE_ORGANIZER") && (
                                         <Badge variant="secondary" className="gap-1">
                                             <Heart className="w-3 h-3" />
-                                            Donor
+                                            Organizer
                                         </Badge>
                                     )}
 
@@ -281,7 +354,98 @@ const Profile = () => {
                             </CardContent>
                         </Card>
 
-                        
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Shield className="w-5 h-5 text-primary" />
+                                    Change Password
+                                </CardTitle>
+                                <CardDescription>
+                                    Update your account password. Choose a strong password you haven't used before.
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="currentPassword">Current Password</Label>
+                                    <Input
+                                        id="currentPassword"
+                                        type="password"
+                                        value={passwordForm.currentPassword}
+                                        autoComplete="current-password"
+
+                                        onChange={(e) =>
+                                            setPasswordForm({
+                                                ...passwordForm,
+                                                currentPassword: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    {passwordErrors.currentPassword && (
+                                        <p className="text-xs text-destructive">
+                                            {passwordErrors.currentPassword}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="newPassword">New Password</Label>
+                                    <Input
+                                        id="newPassword"
+                                        type="password"
+                                        value={passwordForm.newPassword}
+                                        autoComplete="new-password"
+                                        maxLength={72}
+                                        onChange={(e) =>
+                                            setPasswordForm({
+                                                ...passwordForm,
+                                                newPassword: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    {passwordErrors.newPassword && (
+                                        <p className="text-xs text-destructive">
+                                            {passwordErrors.newPassword}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                                    <Input
+                                        id="confirmPassword"
+                                        type="password"
+                                        value={passwordForm.confirmPassword}
+                                        autoComplete="new-password"
+                                        maxLength={72}
+                                        onChange={(e) =>
+                                            setPasswordForm({
+                                                ...passwordForm,
+                                                confirmPassword: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    {passwordErrors.confirmPassword && (
+                                        <p className="text-xs text-destructive">
+                                            {passwordErrors.confirmPassword}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <p className="text-xs text-muted-foreground">
+                                    Password must be at least 8 characters and include an uppercase letter,
+                                    lowercase letter, number, and special character.
+                                </p>
+
+                                <Button
+                                    onClick={handleChangePassword}
+                                    disabled={changingPassword}
+                                >
+                                    {changingPassword ? "Updating..." : "Update Password"}
+                                </Button>
+
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Right column */}

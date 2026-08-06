@@ -122,31 +122,31 @@ const CampaignRequestModal = ({
 
                         {/* Skills & Requirements */}
                         <div className="space-y-2">
-                        
-                            
-                        {selectedCampaign.projectScope && (
-                            <div className="space-y-2">
-                                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                                    <ListChecks className="h-4 w-4 text-primary" /> Project Scope
-                                </h4>
-                                <ul className="space-y-1 list-disc pl-5 text-muted-foreground">
-                                    {selectedCampaign.projectScope?.filter(item => item.trim() !== "")
-                                        .map((item, i) => (
-                                            <li
-                                                key={i}
-                                                className="flex items-start gap-2 text-muted-foreground"
-                                            >
-                                                <CheckCircle
-                                                    size={14}
-                                                    className="text-primary mt-1 shrink-0"
-                                                />
 
-                                                <span>{item}</span>
-                                            </li>
-                                        ))}
-                                </ul>
-                            </div>
-                        )}
+
+                            {selectedCampaign.projectScope && (
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                        <ListChecks className="h-4 w-4 text-primary" /> Project Scope
+                                    </h4>
+                                    <ul className="space-y-1 list-disc pl-5 text-muted-foreground">
+                                        {selectedCampaign.projectScope?.filter(item => item.trim() !== "")
+                                            .map((item, i) => (
+                                                <li
+                                                    key={i}
+                                                    className="flex items-start gap-2 text-muted-foreground"
+                                                >
+                                                    <CheckCircle
+                                                        size={14}
+                                                        className="text-primary mt-1 shrink-0"
+                                                    />
+
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
 
                         {/* Dates */}
@@ -292,6 +292,7 @@ const CampaignRequestModal = ({
                         {selectedCampaign.status === "PENDING_REVIEW" && (
                             <div className="flex gap-3 pt-2">
                                 <Button
+                                    id="confirm-approve"
                                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                                     disabled={processingCampaignId === selectedCampaign.id}
                                     onClick={() =>

@@ -5,6 +5,10 @@ export interface VolunteerApplicationRequest {
     motivation: string;
   }
 
+export const getUserAuthority = async () => {
+    const { data } = await api.get(`/user/authority`);
+    return data;
+}
 
 export const getUserData = async () => {
     const { data } = await api.get(`/user`);
@@ -62,4 +66,29 @@ export const getUserData = async () => {
     );
 
     return response.data;
+};
+
+
+
+export const getMyDonations = async () => {
+    const { data } = await api.get("/volunteer/dashboard/donations");
+    return data;
+};
+
+export const getMyApplications = async () => {
+    const { data } = await api.get("/volunteer/dashboard/applications");
+    return data;
+};
+export const getMyVolunteering = async () => {
+  const { data } = await api.get("/volunteer/dashboard/volunteering");
+  return data;
+};
+
+
+export const changePassword = async (data: {
+  currentPassword: string;
+  newPassword: string;
+}) => {
+  const response = await api.put("/user/change-password", data);
+  return response.data;
 };
